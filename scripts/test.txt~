@@ -1,9 +1,0 @@
-set feedrate 7.5;
-set plungerate 1;
-
-set plungeinc 0.025;
-set transinc 0.75;
-
-skip;
-skip;
-skip;
