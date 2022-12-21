@@ -32,6 +32,22 @@ double F_max(double dx, double dy, double dz) {
   return FXYZ_max();  
 }
 
+double F_accel(double l, double L, double A, double Fmax) {
+
+  double F = A * l;
+
+  if (F > Fmax) {
+
+    F = (L - l) * A;
+
+    if (F < Fmax) { return F; }
+    
+    return Fmax;
+  }
+
+  return F;
+}
+
 Action * create_linear(double X, double Y, double Z, double F) {
 
   Action * linear = malloc(sizeof(struct Action));
@@ -83,18 +99,14 @@ void compile_linear(Action * action, double X, double Y, double Z, unsigned int 
   int Sx = (int) round(fabs(dx) * RPI_X * SPR_X);
   int Sy = (int) round(fabs(dy) * RPI_Y * SPR_Y);
   int Sz = (int) round(fabs(dz) * RPI_Z * SPR_Z);
-  
-  //.. action time
-  double dl = sqrt(dx*dx + dy*dy + dz*dz);
-  double T  = dl / (action -> F / 60);
 
-  unsigned long long dtx = round(T / (double) Sx * 1000000000);
-  unsigned long long dty = round(T / (double) Sy * 1000000000);
-  unsigned long long dtz = round(T / (double) Sz * 1000000000);
+  double dxs = 1 / (RPI_X * SPR_X);
+  double dys = 1 / (RPI_Y * SPR_Y);
+  double dzs = 1 / (RPI_Z * SPR_Z);
   
   //.. allocating memory
   (*S) = Sx + Sy + Sz;
-
+  
   *mx     = malloc(sizeof(unsigned int)       * (*S));
   *my     = malloc(sizeof(unsigned int)       * (*S));
   *mz     = malloc(sizeof(unsigned int)       * (*S));
@@ -111,75 +123,32 @@ void compile_linear(Action * action, double X, double Y, double Z, unsigned int 
   *ny = (unsigned int *) memset(*ny, 0, sizeof(unsigned int) * (*S));
   *nz = (unsigned int *) memset(*nz, 0, sizeof(unsigned int) * (*S));
 
-  //.. compiling x-axis steps
-  (*S) = Sx;
+  (*S) = 0;
   
-  for (unsigned long long s = 0 ; s < Sx ; ++s) {
-
-    (*times)[s] = dtx * (s + 1);
-    (*mx)[s]    = PUL_X;
-    (*nx)[s]    = dx > 0;
-  }
-
-  //.. compiling y-axis steps
-  bool duplicate;
-  unsigned long long t;
+  //.. feed rates
+  double L  = sqrt(dx * dx  + dy * dy + dz * dz);
   
-  for (unsigned long long s = 0 ; s < Sy ; ++s) {
+  double Fx = action -> F * fabs(dx) / L;
+  double Fy = action -> F * fabs(dy) / L;
+  double Fz = action -> F * fabs(dz) / L;
+  
+  //.. compiling steps
+  double l = 0;
+  double t = 0;
+  double F;
+  
+  for (double s = 1 ; s <= Sx ; ++s) {
 
-    t = dty * (s + 1);
-
-    duplicate = false;
-    
-    for (int s2 = 0 ; s2 < *S ; ++s2) {
-
-      if ((*times)[s2] == t) {
-
-        (*my)[s2] = PUL_Y;
-        (*ny)[s2] = dy > 0;
-
-        duplicate = true;
-        break;
-      }
-    }
-
-    if (!duplicate) {
-
-      (*times)[*S] = t;
-      (*my)[*S]    = PUL_Y;
-      (*ny)[*S]    = dy > 0;
-      
-      (*S)++;
-    }
-  }
-
-  //.. compiling z-axis steps
-  for (unsigned long long s = 0 ; s < Sz ; ++s) {
-
-    t = dtz * (s + 1);
-
-    duplicate = false;
-    
-    for (int s2 = 0 ; s2 < *S ; ++s2) {
-
-      if ((*times)[s2] == t) {
-
-        (*mz)[s2] = PUL_Z;
-        (*nz)[s2] = dz < 0;
+    l += dxs;
+    t += dxs / F * 60;
         
-        duplicate = true;
-        break;
-      }
-    }
+    F = F_accel(l, fabs(dx), FAR_X, Fx);
 
-    if (!duplicate) {
+    (*times)[*S] = (unsigned long long) round(t * 1000000000);
+    (*mx)[*S]    = PUL_X;
+    (*nx)[*S]    = dx > 0;
 
-      (*times)[*S] = t;
-      (*mz)[*S]    = PUL_Z;
-      (*nz)[*S]    = dz < 0;
-      
-      (*S)++;
-    }
+    (*S)++;
   }
   
   //.. resizing data
