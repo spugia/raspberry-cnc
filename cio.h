@@ -18,15 +18,15 @@ void                  read_tool(CNC *);
 
 char *            tooltype_name(enum ToolType);
 
-bool                 parse_exit(char **, int);
-
 bool                 parse_hold(char **, int);
 bool                 parse_cont(char **, int);
 bool                 parse_stop(char **, int);
 bool                 parse_skip(char **, int);
+bool                 parse_exit(char **, int);
 
 bool                  parse_get(CNC *, char **, int);
 bool                  parse_set(CNC *, char **, int);
+bool              parse_comment(CNC *, char **, int);
 
 char **               parse_exe(CNC *, char **, int, int *);
 

@@ -384,6 +384,22 @@ bool parse_set(CNC * cnc, char ** segs, int L) {
   return false;
 }
 
+bool parse_comment(CNC * cnc, char ** segs, int L) {
+
+  if (L < 2 || !seq(segs[0], "#")) { return false; }
+
+  printf(">");
+
+  for (int l = 1 ; l < L ; ++l) {
+
+    printf(" %s", segs[l]);
+  }
+
+  printf("\n");
+  
+  return true;
+}
+
 char ** parse_exe(CNC * cnc, char ** segs, int L, int * A) {
   
   if (L != 2 || !seq(segs[0], "exe")) { return NULL; }

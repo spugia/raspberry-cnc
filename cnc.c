@@ -40,13 +40,9 @@ int main() {
     //.. recieving line
     char * line;
 
-    if (hold || !exe) { line = read_line(); }
-    else if (exe && n < N) {
-
-      line = lines[n++];
-      printf("C%d: %s\n", n, line);
-
-    } else if (exe) {
+    if (hold || !exe)      { line = read_line(); }
+    else if (exe && n < N) { line = lines[n++];  }
+    else if (exe) {
 
       printf("> program complete\n");
 
@@ -99,6 +95,7 @@ int main() {
       write_tool(cnc);
 
     }
+    else if (exe && parse_comment(cnc, segs, L))                             { }
     else if (!hold && (s = parse_goto(cnc, segs, L)) != NULL)                { execute_sequence(cnc, s, 1); }
     else if (!hold && (s = parse_delta(cnc, segs, L)) != NULL)               { execute_sequence(cnc, s, 1); }
     else if (!hold && (s = parse_face(cnc, segs, L, &A)) != NULL)            { execute_sequence(cnc, s, A); }
