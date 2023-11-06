@@ -1,10 +1,10 @@
 #include "control.h"
 
-double FX_max(void) { return 1000000000 / (SPR_X * RPI_X * 2 * SPS_23) * 60; }
+double FX_max(void) { return 1000000000 / (2 * SPR_X * RPI_X * SPS_23) * 60; }
 
-double FY_max(void) { return 1000000000 / (SPR_Y * RPI_Y * 2 * SPS_23) * 60; }
+double FY_max(void) { return 1000000000 / (2 * SPR_Y * RPI_Y * SPS_23) * 60; }
 
-double FZ_max(void) { return 1000000000 / (SPR_Z * RPI_Z * 2 * SPS_23) * 60; }
+double FZ_max(void) { return 1000000000 / (2 * SPR_Z * RPI_Z * SPS_23) * 60; }
 
 double FXY_max(void) {
 
@@ -34,16 +34,11 @@ double F_max(double dx, double dy, double dz) {
 
 double F_accel(double l, double L, double A, double Fmax) {
 
-  double F = A * l;
+  double F = A * l + FMIN;
 
-  if (F > Fmax) {
+  if (l / L > 0.5) { F = A * (L - l) + FMIN; }
 
-    F = (L - l) * A;
-
-    if (F < Fmax) { return F; }
-    
-    return Fmax;
-  }
+  if (F > Fmax) { F = Fmax; }
 
   return F;
 }
@@ -125,30 +120,120 @@ void compile_linear(Action * action, double X, double Y, double Z, unsigned int 
 
   (*S) = 0;
   
-  //.. feed rates
-  double L  = sqrt(dx * dx  + dy * dy + dz * dz);
-  
-  double Fx = action -> F * fabs(dx) / L;
-  double Fy = action -> F * fabs(dy) / L;
-  double Fz = action -> F * fabs(dz) / L;
-  
-  //.. compiling steps
+  //.. compiling x-axis steps
+  (*S) = Sx;
+
+  double x = 0;
+  double y = 0;
+  double z = 0;
+  double ll = 0;
   double l = 0;
-  double t = 0;
+  double L = sqrt(dx * dx + dy * dy + dz * dz);
   double F;
   
-  for (double s = 1 ; s <= Sx ; ++s) {
+  bool duplicate;
+  unsigned long long t = 0;
+  
+  for (unsigned long long s = 0 ; s < Sx ; ++s) {
 
-    l += dxs;
-    t += dxs / F * 60;
+    x += dxs;
+    y = x * fabs(dy / dx);
+    z = x * fabs(dz / dx);
+
+    l = sqrt(x * x + y * y + z * z);
+    F = F_accel(l, L, FAR, action -> F);
+
+    t += (unsigned long long) round((l - ll) / F * 60 * 1000000000);
+    
+    (*times)[s] = t;
+    (*mx)[s]    = PUL_X;
+    (*nx)[s]    = dx > 0;
+
+    ll = l;
+  }
+
+  //.. compiling y-axis steps
+  t  = 0;
+  y  = 0;
+  ll = 0;
+  
+  for (unsigned long long s = 0 ; s < Sy ; ++s) {
+
+    y += dys;
+    x = y * fabs(dx / dy);
+    z = y * fabs(dz / dy);
+
+    l = sqrt(x * x + y * y + z * z);
+    F = F_accel(l, L, FAR, action -> F);
+
+    t += (unsigned long long) round((l - ll) / F * 60 * 1000000000);
+    
+    ll = l;
+    
+    duplicate = false;
+    
+    for (int s2 = 0 ; s2 < *S ; ++s2) {
+
+      if ((*times)[s2] == t) {
+
+        (*my)[s2] = PUL_Y;
+        (*ny)[s2] = dy > 0;
+
+        duplicate = true;
+        break;
+      }
+    }
+
+    if (!duplicate) {
+
+      (*times)[*S] = t;
+      (*my)[*S]    = PUL_Y;
+      (*ny)[*S]    = dy > 0;
+      
+      (*S)++;
+    }
+  }
+
+  //.. compiling z-axis steps
+  t  = 0;
+  z  = 0;
+  ll = 0;
+
+  for (unsigned long long s = 0 ; s < Sz ; ++s) {
+
+    z += dzs;
+    x = z * fabs(dx / dz);
+    y = z * fabs(dy / dz);
+
+    l = sqrt(x * x + y * y + z * z);
+    F = F_accel(l, L, FAR, action -> F);
+
+    t += (unsigned long long) round((l - ll) / F * 60 * 1000000000);
+    
+    ll = l;
+
+    duplicate = false;
+    
+    for (int s2 = 0 ; s2 < *S ; ++s2) {
+
+      if ((*times)[s2] == t) {
+
+        (*mz)[s2] = PUL_Z;
+        (*nz)[s2] = dz < 0;
         
-    F = F_accel(l, fabs(dx), FAR_X, Fx);
+        duplicate = true;
+        break;
+      }
+    }
 
-    (*times)[*S] = (unsigned long long) round(t * 1000000000);
-    (*mx)[*S]    = PUL_X;
-    (*nx)[*S]    = dx > 0;
+    if (!duplicate) {
 
-    (*S)++;
+      (*times)[*S] = t;
+      (*mz)[*S]    = PUL_Z;
+      (*nz)[*S]    = dz < 0;
+      
+      (*S)++;
+    }
   }
   
   //.. resizing data
@@ -167,27 +252,28 @@ void compile_curve(Action * action, double X, double Y, unsigned int ** mx, unsi
   double T1 = atan2(Y - action -> Y0, X - action -> X0) + 2 * M_PI * ((Y - action -> Y0) < 0);
   double T2 = atan2(action -> Y - action -> Y0, action -> X - action -> X0) + 2 * M_PI * ((action -> Y - action -> Y0) < 0);
 
-  T2 += (T1 >= T2) * 2 * M_PI;
+  if (T1 == 0)       { T1  = 2 * M_PI; }
+  if (T2 > 2 * M_PI) { T2 -= 2 * M_PI; }
+
+  if (lfeq(T1, T2)) { T2 += 2 * M_PI; }
   
   //.. radius
-  double dxs = 1 / (RPI_X * SPR_X);
-  double dys = 1 / (RPI_Y * SPR_Y);
-
-  double dmin = dxs;
-  if (dys < dmin) { dmin = dys; }
-  
   double R = sqrt(pow(X - action -> X0, 2) + pow(Y - action -> Y0, 2));
 
-  //.. allocating data structures  
+  //.. steps  
+  double dxs = 1 / (RPI_X * SPR_X);
+  double dys = 1 / (RPI_Y * SPR_Y);
+  
+  //.. allocating data structures
   (*S) = round(5 * R / dxs) + round(5 * R / dys);
 
-  *times  = malloc(sizeof(unsigned long long) * (*S));
-  *mx     = malloc(sizeof(unsigned int)       * (*S));
-  *my     = malloc(sizeof(unsigned int)       * (*S));
-  *mz     = malloc(sizeof(unsigned int)       * (*S));
-  *nx     = malloc(sizeof(unsigned int)       * (*S));
-  *ny     = malloc(sizeof(unsigned int)       * (*S));
-  *nz     = malloc(sizeof(unsigned int)       * (*S));
+  *times = malloc(sizeof(unsigned long long) * (*S));
+  *mx    = malloc(sizeof(unsigned int)       * (*S));
+  *my    = malloc(sizeof(unsigned int)       * (*S));
+  *mz    = malloc(sizeof(unsigned int)       * (*S));
+  *nx    = malloc(sizeof(unsigned int)       * (*S));
+  *ny    = malloc(sizeof(unsigned int)       * (*S));
+  *nz    = malloc(sizeof(unsigned int)       * (*S));
   
   *mx = (unsigned int *) memset(*mx, 0, sizeof(unsigned int) * (*S));
   *my = (unsigned int *) memset(*my, 0, sizeof(unsigned int) * (*S));
@@ -197,59 +283,75 @@ void compile_curve(Action * action, double X, double Y, unsigned int ** mx, unsi
   *nz = (unsigned int *) memset(*nz, 0, sizeof(unsigned int) * (*S));
 
   (*S) = 0;
-
+  
   if (lfeq(R, 0)) { return; }
   
   //.. compiling steps
-  bool incx, incy;
   
-  int xl = 0;
-  int yl = 0;
-  int x, y;
+  double dmin = dxs;
+  if (dys < dmin) { dmin = dys; }
 
-  double Nx = 1;
-  double Ny = 1;
-  double Tx = T1;
-  double Ty = T1;
-  double T  = T1;
-  double dT = dmin / R / 25;
+  double dT = dmin / R / 100;
+  dT = (T2 - T1) / round(fabs(T2 - T1) / dT);
 
-  while ((T += dT) <= T2) {
+  int ix, iy;
 
-    incx = false;
-    incy = false;
-    
-    x = round((R * cos(T) + action -> X0 - X) / dxs);
-    y = round((R * sin(T) + action -> Y0 - Y) / dys);
+  int ixl = (int) round(R * cos(T1) / dxs);
+  int iyl = (int) round(R * sin(T1) / dys);
 
-    incx = (x != xl);
-    incy = (y != yl);
+  double dl;
+  double F;
+  double l;
+  double L = fabs(T2 - T1) * R;
+  double Tc;
+  
+  unsigned long long time = 0;
+  
+  for (double T = T1 ; dT > 0 && T <= T2 || dT < 0 && T >= T2 ; T += dT) {
 
-    if (!incx) { Tx += T; Nx++; }
-    else {
+    ix = (int) round(R * cos(T) / dxs);
+    iy = (int) round(R * sin(T) / dys);
 
-      (*times)[(*S)] = (unsigned long long) round(fabs(Tx / Nx - T1) * R / action -> F * 60 * 1000000000);
-      (*mx)[(*S)]    = PUL_X;
-      (*nx)[(*S)]    = x < xl;
-
-      (*S)++;
+    if (ix != ixl || iy != iyl) {
+ 
+      dl = sqrt(pow((double) (ix - ixl) * dxs, 2) + pow((double) (iy - iyl) * dys, 2));
+      l  = fabs(Tc - T1) * R;
       
-      Tx = T;
-      Nx = 1;
-      xl = x;
-    }
-    
-    if (!incy) { Ty += T; Ny++; }
-    else {
+      Tc = atan2((double) iy * dys, (double) ix * dxs) + 2 * M_PI * (((double) iy * dys) < 0);
+     
+      F = F_accel(l, L, FAR, action -> F); 
+      
+      time += (unsigned long long) round(dl / F * 60 * 1000000000);
 
-      if (!incx) { (*times)[(*S)++] = (unsigned long long) round(fabs(Ty / Ny - T1) * R / action -> F * 60 * 1000000000); }
+      (*times)[(*S)] = time;
+      (*mx)[(*S)]    = PUL_X * (ix != ixl);
+      (*my)[(*S)]    = PUL_Y * (iy != iyl);
+      
+      switch(quadrant(Tc)) {
 
-      (*my)[(*S) - 1] = PUL_Y;
-      (*ny)[(*S) - 1] = y < yl;
-
-      Ty = T;
-      Ny = 1;
-      yl = y;
+      case 1:
+	(*nx)[(*S)] = dT > 0;
+	(*ny)[(*S)] = dT < 0;
+	break;
+      case 2:
+	(*nx)[(*S)] = dT > 0;
+	(*ny)[(*S)] = dT > 0;
+	break;
+      case 3:
+	(*nx)[(*S)] = dT < 0;
+	(*ny)[(*S)] = dT > 0;
+	break;
+      case 4:
+	(*nx)[(*S)] = dT < 0;
+	(*ny)[(*S)] = dT < 0;
+	break;
+      default: break;
+      }
+      
+      (*S)++;
+	
+      ixl = ix;
+      iyl = iy;
     }
   }
   
@@ -394,14 +496,28 @@ void execute_sequence(CNC * cnc, Action ** actions, int A) {
     case Linear:
       
       compile_linear(actions[a], cnc -> X, cnc -> Y, cnc -> Z, &mx, &my, &mz, &nx, &ny, &nz, &times, &S);
-      printf("> %.2f%% - P: (%.6f, %.6f, %.6f) in X F%.4f in/min\n", (double) (a + 1) / (double) A * 100, actions[a] -> X, actions[a] -> Y, actions[a] -> Z, actions[a] -> F);
+      printf("> %.2f%% - P: (%.6f, %.6f, %.6f) %s X F%.4f %s/min\n", (double) (a + 1) / (double) A * 100,
+	                                                             r2v(actions[a] -> X, cnc -> unit),
+	                                                             r2v(actions[a] -> Y, cnc -> unit),
+	                                                             r2v(actions[a] -> Z, cnc -> unit),
+	                                                             unit_name(cnc -> unit),
+	                                                             r2v(actions[a] -> F, cnc -> unit),
+	                                                             unit_name(cnc -> unit));
 
       break;
 
     case Curve:
 
       compile_curve(actions[a], cnc -> X, cnc -> Y, &mx, &my, &mz, &nx, &ny, &nz, &times, &S);
-      printf("> %.2f%% o P0: (%.6f, %.6f) in P: (%.6f, %.6f) in X F%.4f in/min\n", (double) (a + 1) / (double) A * 100, actions[a] -> X0, actions[a] -> Y0, actions[a] -> X, actions[a] -> Y, actions[a] -> F);
+      printf("> %.2f%% o P0: (%.6f, %.6f) %s P: (%.6f, %.6f) %s X F%.4f %s/min\n", (double) (a + 1) / (double) A * 100,
+	                                                                           r2v(actions[a] -> X0, cnc -> unit),
+	                                                                           r2v(actions[a] -> Y0, cnc -> unit),
+	                                                                           unit_name(cnc -> unit),
+	                                                                           r2v(actions[a] -> X, cnc -> unit),
+	                                                                           r2v(actions[a] -> Y, cnc -> unit),
+	                                                                           unit_name(cnc -> unit),
+	                                                                           r2v(actions[a] -> F, cnc -> unit),
+	                                                                           unit_name(cnc -> unit));
 
       break;
 
@@ -416,7 +532,7 @@ void execute_sequence(CNC * cnc, Action ** actions, int A) {
     if (!isnan(actions[a] -> X)) { cnc -> X = actions[a] -> X; }
     if (!isnan(actions[a] -> Y)) { cnc -> Y = actions[a] -> Y; }
     if (!isnan(actions[a] -> Z)) { cnc -> Z = actions[a] -> Z; }
-
+    
     write_position(cnc);
     
     //.. freeing memory

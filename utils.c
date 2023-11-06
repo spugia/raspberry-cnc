@@ -55,3 +55,14 @@ double acos2(double x) {
 
   return y;
 }
+
+int quadrant(double angle) {
+
+  while (angle >= 2 * M_PI) { angle -= 2 * M_PI; }
+
+  if (angle >= 0 && angle < M_PI_2)                 { return 1; }
+  else if (angle >= M_PI_2 && angle < M_PI)         { return 2;  }
+  else if (angle >= M_PI && angle < 1.5 * M_PI)     { return 3;  }
+  else if (angle >= 1.5 * M_PI && angle < 2 * M_PI) { return 4;  }
+  else                                              { return -1; }
+}

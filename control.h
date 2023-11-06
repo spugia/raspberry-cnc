@@ -1,38 +1,35 @@
 // DEFINITIONS
 
 //.. pinout
+#define PUL_X 25
+#define PUL_Y 23
+#define PUL_Z 15
+
+#define DIR_X 24
+#define DIR_Y 18
+#define DIR_Z 14
+
 #define STP_X 4
 #define STP_Y 27
 #define STP_Z 22
-
-#define PUL_X 27 // 25
-#define PUL_Y 17 // 23
-#define PUL_Z 23 // 15
-
-#define DIR_X 4  // 24
-#define DIR_Y 24 // 18
-#define DIR_Z 25 // 14
 
 #define SPND 26
 
 //.. screw size [thread / in]
 #define RPI_X 10.0F
 #define RPI_Y 10.0F
-#define RPI_Z 20.0F
+#define RPI_Z 25.4F
 
 //.. steps-per-revolution
-#define SPR_X 200.0F
-#define SPR_Y 200.0F
+#define SPR_X 400.0F
+#define SPR_Y 400.0F
 #define SPR_Z 200.0F
 
 //.. feed acceleration [in/min/in]
-#define FAR_X 100.0F
-#define FAR_Y 100.0F
-#define FAR_Z 100.0F
+#define FAR  150.0F
+#define FMIN 1.0F
 
-#define FMIN  1.0F
-
-//.. NEMA23 pulsing frequency
+//.. NEMA23 pulsing frequency (limited by pi)
 #define SPS_23 1000000
 
 // ENUMERATORS

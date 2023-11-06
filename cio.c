@@ -86,11 +86,31 @@ char ** split_line(char * line, char del, int * L) {
   return segs;
 }
 
+void read_config(CNC * cnc) {
+
+  cnc -> unit = IN;
+
+  FILE * file = fopen(CPATH, "ab+");
+
+  int dex = 0;
+  
+  char line[CMDLEN];
+
+  while (fgets(line, sizeof(line), file)) {
+
+    switch (dex++) {
+
+    case 0: cnc -> unit = atoi(line);
+    default: break;
+    }
+  }
+
+  fclose(file);
+}
+
 void read_position(CNC * cnc) {
 
   //.. creating directory
-  char * directory = "cnc-state";
-
   struct stat dir = {0};
 
   if (stat(DPATH, &dir) == -1) { mkdir(DPATH, 0755); }
@@ -117,9 +137,9 @@ void read_position(CNC * cnc) {
   }
 
   printf("------------ POSITION ------------\n");
-  printf("X: %.6f\n", cnc -> X);
-  printf("Y: %.6f\n", cnc -> Y);
-  printf("Z: %.6f\n", cnc -> Z);
+  printf("X: %.6f %s\n", r2v(cnc -> X, cnc -> unit), unit_name(cnc -> unit));
+  printf("Y: %.6f %s\n", r2v(cnc -> Y, cnc -> unit), unit_name(cnc -> unit));
+  printf("Z: %.6f %s\n", r2v(cnc -> Z, cnc -> unit), unit_name(cnc -> unit));
   printf("\n");
     
   fclose(file);
@@ -153,9 +173,9 @@ void read_material(CNC * cnc) {
   fclose(file);
 
   printf("------------ MATERIAL ------------\n");
-  printf(" Translation Rate: %.6f in/min\n", cnc -> mat.Fxy);
-  printf("      Plunge Rate: %.6f in/min\n", cnc -> mat.Fz);
-  printf("       Plunge Inc: %.6f in\n", cnc -> mat.dz);
+  printf(" Translation Rate: %.6f %s/min\n",   r2v(cnc -> mat.Fxy, cnc -> unit), unit_name(cnc -> unit));
+  printf("      Plunge Rate: %.6f %s/min\n",   r2v(cnc -> mat.Fz, cnc -> unit), unit_name(cnc -> unit));
+  printf("       Plunge Inc: %.6f %s\n",       r2v(cnc -> mat.dz, cnc -> unit), unit_name(cnc -> unit));
   printf("Translational Inc: %.2f%% of bit\n", cnc -> mat.dr * 100);
   printf("\n");
 }
@@ -185,14 +205,28 @@ void read_tool(CNC * cnc) {
   fclose(file);
 
   printf("-------------- TOOL --------------\n");
-  printf("        Type: %s\n", tooltype_name(cnc -> tool.type));
-  printf("    Diameter: %.6f in\n", cnc -> tool.d);
-  printf("Flute Length: %.6f in\n", cnc -> tool.Lf);
-  printf("Total Length: %.6f in\n", cnc -> tool.Lt);
+  printf("        Type: %s\n",      tool_name(cnc -> tool.type));
+  printf("    Diameter: %.6f %s\n", r2v(cnc -> tool.d, cnc -> unit), unit_name(cnc -> unit));
+  printf("Flute Length: %.6f %s\n", r2v(cnc -> tool.Lf, cnc -> unit), unit_name(cnc -> unit));
+  printf("Total Length: %.6f %s\n", r2v(cnc -> tool.Lt, cnc -> unit), unit_name(cnc -> unit));
   printf("\n");
 }
 
-char * tooltype_name(enum ToolType type) {
+int parse_unit(char * str) {
+
+  if (seq(str, "in")) { return IN; }
+  if (seq(str, "mm")) { return MM; }
+
+  return -1;
+}
+
+int parse_tool(char * str) {
+
+  if (seq(str, "empty"))   { return NONE;    }
+  if (seq(str, "endmill")) { return ENDMILL; }
+}
+
+char * tool_name(enum ToolType type) {
 
   switch (type) {
 
@@ -243,19 +277,24 @@ bool parse_get(CNC * cnc, char ** segs, int L) {
   
   if (L == 2 && seq(segs[0], "get")) {
     
-    if (seq(segs[1], "X"))           { printf("> X = %.6f in\n", cnc -> X);                                        return true; }
-    if (seq(segs[1], "Y"))           { printf("> Y = %.6f in\n", cnc -> Y);                                        return true; }
-    if (seq(segs[1], "Z"))           { printf("> Z = %.6f in\n", cnc -> Z);                                        return true; }
-    if (seq(segs[1], "P"))           { printf("> P = (%.6f, %.6f, %.6f) in\n", cnc -> X, cnc -> Y, cnc -> Z);      return true; }
-    if (seq(segs[1], "ToolType"))    { printf("> Tool Type = %s\n", tooltype_name(cnc -> tool.type));              return true; }
-    if (seq(segs[1], "ToolSize"))    { printf("> Tool Size = %.6f in\n", cnc -> tool.d);                           return true; }
-    if (seq(segs[1], "FluteLength")) { printf("> Flute Length = %.6f in\n", cnc -> tool.Lf);                       return true; }
-    if (seq(segs[1], "ToolLength"))  { printf("> Tool Length = %.6f in\n", cnc -> tool.Lt);                        return true; }
-    if (seq(segs[1], "FeedRate"))    { printf("> Feed Rate = %.4f in/min\n", cnc -> mat.Fxy);                      return true; }
-    if (seq(segs[1], "PlungeRate"))  { printf("> Plunge Rate = %.4f in/min\n", cnc -> mat.Fz);                     return true; }
-    if (seq(segs[1], "PlungeInc"))   { printf("> Plunge Increment = %.6f in\n", cnc -> mat.dz);                    return true; }
-    if (seq(segs[1], "TransInc"))    { printf("> Translational Increment = %.2f%% of bit\n", cnc -> mat.dr * 100); return true; }
+    if (seq(segs[1], "X"))           { printf("> X = %.6f %s\n", r2v(cnc -> X, cnc -> unit), unit_name(cnc -> unit));                     return true; }
+    if (seq(segs[1], "Y"))           { printf("> Y = %.6f %s\n", r2v(cnc -> Y, cnc -> unit), unit_name(cnc -> unit));                     return true; }
+    if (seq(segs[1], "Z"))           { printf("> Z = %.6f %s\n", r2v(cnc -> Z, cnc -> unit), unit_name(cnc -> unit));                     return true; }
+    if (seq(segs[1], "P"))           { printf("> P = (%.6f, %.6f, %.6f) %s\n", r2v(cnc -> X, cnc -> unit),
+					                                       r2v(cnc -> Y, cnc -> unit),
+					                                       r2v(cnc -> Z, cnc -> unit),
+					                                       unit_name(cnc -> unit));                                   return true; }
+    if (seq(segs[1], "UnitType"))    { printf("> Unit Type = %s\n", unit_name(cnc -> unit));                                              return true; }
+    if (seq(segs[1], "ToolType"))    { printf("> Tool Type = %s\n", tool_name(cnc -> tool.type));                                         return true; }
+    if (seq(segs[1], "ToolSize"))    { printf("> Tool Size = %.6f %s\n", r2v(cnc -> tool.d, cnc -> unit), unit_name(cnc -> unit));        return true; }
+    if (seq(segs[1], "FluteLength")) { printf("> Flute Length = %.6f %s\n", r2v(cnc -> tool.Lf, cnc -> unit), unit_name(cnc -> unit));    return true; }
+    if (seq(segs[1], "ToolLength"))  { printf("> Tool Length = %.6f %s\n", r2v(cnc -> tool.Lt, cnc -> unit), unit_name(cnc -> unit));     return true; }
+    if (seq(segs[1], "FeedRate"))    { printf("> Feed Rate = %.4f %s/min\n", r2v(cnc -> mat.Fxy, cnc -> unit), unit_name(cnc -> unit));   return true; }
+    if (seq(segs[1], "PlungeRate"))  { printf("> Plunge Rate = %.4f %s/min\n", r2v(cnc -> mat.Fz, cnc -> unit), unit_name(cnc -> unit));  return true; }
+    if (seq(segs[1], "PlungeInc"))   { printf("> Plunge Increment = %.6f %s\n", r2v(cnc -> mat.dz, cnc -> unit), unit_name(cnc -> unit)); return true; }
+    if (seq(segs[1], "TransInc"))    { printf("> Translational Increment = %.2f%% of bit\n", cnc -> mat.dr * 100);                        return true; }
   }
+  
   return false;
 }
 
@@ -267,45 +306,62 @@ bool parse_set(CNC * cnc, char ** segs, int L) {
     
     if (seq(segs[1], "X") && L == 3 && parse_lf(segs[2], &v1)) {
 
-      cnc -> X = v1;
-      printf("> X = %.6f in\n", cnc -> X);
+      cnc -> X = v2r(v1, cnc -> unit);
+      printf("> X = %.6f %s\n", r2v(cnc -> X, cnc -> unit), unit_name(cnc -> unit));
     
       return true;
     }
 
     if (seq(segs[1], "Y") && L == 3 && parse_lf(segs[2], &v1)) {
 
-      cnc -> Y = v1;
-      printf("> Y = %.6f in\n", cnc -> Y);
+      cnc -> Y = v2r(v1, cnc -> unit);
+      printf("> Y = %.6f %s\n", r2v(cnc -> Y, cnc -> unit), unit_name(cnc -> unit));
     
       return true;
     }
     
     if (seq(segs[1], "Z") && L == 3 && parse_lf(segs[2], &v1)) {
 
-      cnc -> Z = v1;
-      printf("> Z = %.6f in\n", cnc -> Z);
+      cnc -> Z = v2r(v1, cnc -> unit);
+      printf("> Z = %.6f %s\n", r2v(cnc -> Z, cnc -> unit), unit_name(cnc -> unit));
     
       return true;
     }
 
     if (seq(segs[1], "P") && L == 5 && parse_lf(segs[2], &v1) && parse_lf(segs[3], &v2) && parse_lf(segs[4], &v3)) {
 
-      cnc -> X = v1;
-      cnc -> Y = v2;
-      cnc -> Z = v3;
+      cnc -> X = v2r(v1, cnc -> unit);
+      cnc -> Y = v2r(v2, cnc -> unit);
+      cnc -> Z = v2r(v3, cnc -> unit);
 
-      printf("> P = (%.6f %.6f %.6f) in\n", cnc -> X , cnc -> Y, cnc -> Z);
+      printf("> P = (%.6f %.6f %.6f) %s\n", r2v(cnc -> X, cnc -> unit),
+	                                    r2v(cnc -> Y, cnc -> unit),
+	                                    r2v(cnc -> Z, cnc -> unit),
+	                                    unit_name(cnc -> unit));
+
+      return true;
+    }
+
+    if (seq(segs[1], "UnitType") && L == 3) {
+
+      v1 = parse_unit(segs[2]);
+      
+      if (v1 < 0) { return false; }
+
+      cnc -> unit = (int) v1;
+      printf("> Unit Type = %s\n", unit_name(cnc -> unit));
 
       return true;
     }
     
-    if (seq(segs[1], "ToolType") && L == 3 && parse_lf(segs[2], &v1)) {
+    if (seq(segs[1], "ToolType") && L == 3) {
 
-      if (v1 < 0) { return false; }
+      v1 = parse_tool(segs[2]);
       
+      if (v1 < 0) { return false; }
+
       cnc -> tool.type = (int) v1;
-      printf("> Tool Type = %s\n", tooltype_name(cnc -> tool.type));
+      printf("> Tool Type = %s\n", tool_name(cnc -> tool.type));
 
       return true;
     }
@@ -314,8 +370,8 @@ bool parse_set(CNC * cnc, char ** segs, int L) {
 
       if (v1 <= 0) { return false; }
       
-      cnc -> tool.d = v1;
-      printf("> Tool Size = %.6f in\n", cnc -> tool.d);
+      cnc -> tool.d = v2r(v1, cnc -> unit);
+      printf("> Tool Size = %.6f %s\n", r2v(cnc -> tool.d, cnc -> unit), unit_name(cnc -> unit));
 
       return true;
     }
@@ -324,8 +380,8 @@ bool parse_set(CNC * cnc, char ** segs, int L) {
 
       if (v1 <= 0) { return false; }
       
-      cnc -> tool.Lf = v1;
-      printf("> Flute Length = %.6f in\n", cnc -> tool.Lf);
+      cnc -> tool.Lf = v2r(v1, cnc -> unit);
+      printf("> Flute Length = %.6f %s\n", r2v(cnc -> tool.Lf, cnc -> unit), unit_name(cnc -> unit));
 
       return true;
     }
@@ -334,28 +390,32 @@ bool parse_set(CNC * cnc, char ** segs, int L) {
 
       if (v1 <= 0) { return false; }
       
-      cnc -> tool.Lt = v1;
-      printf("> Tool Length = %.6f in\n", cnc -> tool.Lt);
+      cnc -> tool.Lt = v2r(v1, cnc -> unit);
+      printf("> Tool Length = %.6f %s\n", r2v(cnc -> tool.Lt, cnc -> unit), unit_name(cnc -> unit));
 
       return true;
     }
 
     if (seq(segs[1], "FeedRate") && L == 3 && parse_lf(segs[2], &v1)) {
 
+      v1 = v2r(v1, cnc -> unit);
+      
       if (v1 <= 0 || v1 > FXY_max()) { return false; }
       
       cnc -> mat.Fxy = v1;
-      printf("> Feed Rate = %.4f in/min\n", cnc -> mat.Fxy);
+      printf("> Feed Rate = %.4f %s/min\n", r2v(cnc -> mat.Fxy, cnc -> unit), unit_name(cnc -> unit));
 
       return true;
     }
 
     if (seq(segs[1], "PlungeRate") && L == 3 && parse_lf(segs[2], &v1)) {
 
+      v1 = v2r(v1, cnc -> unit);
+      
       if (v1 <= 0 || v1 > FZ_max()) { return false; }
       
       cnc -> mat.Fz = v1;
-      printf("> Plunge Rate = %.4f in/min\n", cnc -> mat.Fz);
+      printf("> Plunge Rate = %.4f %s/min\n", r2v(cnc -> mat.Fz, cnc -> unit), unit_name(cnc -> unit));
 
       return true;
     }
@@ -364,8 +424,8 @@ bool parse_set(CNC * cnc, char ** segs, int L) {
 
       if (v1 <= 0) { return false; }
       
-      cnc -> mat.dz = v1;
-      printf("> Plunge Increment = %.6f in\n", cnc -> mat.dz);
+      cnc -> mat.dz = v2r(v1, cnc -> unit);
+      printf("> Plunge Increment = %.6f %s\n", r2v(cnc -> mat.dz, cnc -> unit), unit_name(cnc -> unit));
 
       return true;
     }
@@ -423,16 +483,34 @@ char ** parse_exe(CNC * cnc, char ** segs, int L, int * A) {
   return split_line(line, ';', A);
 }
 
+int parse_spindle(CNC * cnc, char ** segs, int L) {
+
+  if (L != 2 || !seq(segs[0], "spindle")) { return -1; }
+
+  if (seq(segs[1],  "on")) { printf("> spindle on\n");  return 0; }
+  if (seq(segs[1], "off")) { printf("> spindle off\n"); return 1; }
+
+  return -1; 
+}
+
 Action ** parse_goto(CNC * cnc, char ** segs, int L) {
 
-  if (!seq(segs[0], "goto")) { return NULL; }
+  if (L < 4 || L > 5 || !seq(segs[0], "goto")) { return NULL; }
   
   double X, Y, Z, F;
   
   if (!parse_lf(segs[1], &X) || !parse_lf(segs[2], &Y) || !parse_lf(segs[3], &Z)) { return false; }
+
+  X = v2r(X, cnc -> unit);
+  Y = v2r(Y, cnc -> unit);
+  Z = v2r(Z, cnc -> unit);
   
-  if (L == 5 && !parse_lf(segs[4], &F)) { return false; }
-  else if (L == 4) { F = F_max(fabs(X - cnc -> X), fabs(Y - cnc -> Y), fabs(Z - cnc -> Z)); }
+  if (L == 5) {
+
+    if (!parse_lf(segs[4], &F)) { return false; }
+    F = v2r(F, cnc -> unit);
+
+  } else if (L == 4) { F = F_max(fabs(X - cnc -> X), fabs(Y - cnc -> Y), fabs(Z - cnc -> Z)); }
   
   Action ** s = malloc(sizeof(Action *));
   s[0] = create_linear(X, Y, Z, F);
@@ -442,14 +520,22 @@ Action ** parse_goto(CNC * cnc, char ** segs, int L) {
 
 Action ** parse_delta(CNC * cnc, char ** segs, int L) {
 
-  if (!seq(segs[0], "delta")) { return NULL; }
+  if (L < 4 || L > 5 || !seq(segs[0], "delta")) { return NULL; }
 
   double dx, dy, dz, F;
 
   if (!parse_lf(segs[1], &dx) || !parse_lf(segs[2], &dy) || !parse_lf(segs[3], &dz)) { return false; }
 
-  if (L == 5 && !parse_lf(segs[4], &F)) { return false;          }
-  else if (L == 4)                      { F = F_max(dx, dy, dz); }
+  dx = v2r(dx, cnc -> unit);
+  dy = v2r(dy, cnc -> unit);
+  dz = v2r(dz, cnc -> unit);
+  
+  if (L == 5) {
+
+    if (!parse_lf(segs[4], &F)) { return false; }
+    F = v2r(F, cnc -> unit);
+
+  } else if (L == 4) { F = F_max(dx, dy, dz); }
 
   Action ** s = malloc(sizeof(Action *));
   s[0] = create_linear(cnc -> X + dx, cnc -> Y + dy, cnc -> Z + dz, F);
@@ -470,6 +556,13 @@ Action ** parse_face(CNC * cnc, char ** segs, int L, int * A) {
       !parse_lf(segs[5], &ly) ||
       !parse_lf(segs[6], &h)) { return NULL; }
 
+  x0 = v2r(x0, cnc -> unit);
+  y0 = v2r(y0, cnc -> unit);
+  z0 = v2r(z0, cnc -> unit);
+  lx = v2r(lx, cnc -> unit);
+  ly = v2r(ly, cnc -> unit);
+  h  = v2r(h,  cnc -> unit);
+  
   if (lx < 0 || ly < 0 || h < 0)                { return NULL; }
   if (lx < cnc -> tool.d || ly < cnc -> tool.d) { return NULL; } 
   
@@ -489,6 +582,13 @@ Action ** parse_square_pocket(CNC * cnc, char ** segs, int L, int * A) {
       !parse_lf(segs[5], &ly) ||
       !parse_lf(segs[6], &h)) { return NULL; }
 
+  x0 = v2r(x0, cnc -> unit);
+  y0 = v2r(y0, cnc -> unit);
+  z0 = v2r(z0, cnc -> unit);
+  lx = v2r(lx, cnc -> unit);
+  ly = v2r(ly, cnc -> unit);
+  h  = v2r(h,  cnc -> unit);
+  
   if (lx < 0 || ly < 0 || h < 0)                { return NULL; }
   if (lx < cnc -> tool.d || ly < cnc -> tool.d) { return NULL; } 
     
@@ -508,6 +608,13 @@ Action ** parse_circular_pocket(CNC * cnc, char ** segs, int L, int * A) {
       !parse_lf(segs[5], &ro) ||
       !parse_lf(segs[6], &h)) { return NULL; }
 
+  x0 = v2r(x0, cnc -> unit);
+  y0 = v2r(y0, cnc -> unit);
+  z0 = v2r(z0, cnc -> unit);
+  ri = v2r(ri, cnc -> unit);
+  ro = v2r(ro, cnc -> unit);
+  h  = v2r(h,  cnc -> unit);
+  
   if (ri < 0 || ro <= 0)         { return NULL; }
   if ((ro - ri) < cnc -> tool.d) { return NULL; }
 
@@ -515,3 +622,46 @@ Action ** parse_circular_pocket(CNC * cnc, char ** segs, int L, int * A) {
   
   return circular_pocket(cnc -> mat.Fxy, cnc -> mat.Fz, cnc -> tool.d, x0, y0, z0, ri, ro, cnc -> mat.dr, h, cnc -> mat.dz, A);
 }
+
+Action ** parse_cutout(CNC * cnc, char ** segs, int L, int * A) {
+  
+  if (L != 11 || !seq(segs[0], "cutout")) { return NULL; }
+
+  double z0, xmin, ymin, xmax, ymax, rtl, rtr, rbr, rbl, h;
+  
+  if (!parse_lf(segs[1], &z0) ||
+      !parse_lf(segs[2], &xmin) ||
+      !parse_lf(segs[3], &ymin) ||
+      !parse_lf(segs[4], &xmax) ||
+      !parse_lf(segs[5], &ymax) ||
+      !parse_lf(segs[6], &rtl) ||
+      !parse_lf(segs[7], &rtr) ||
+      !parse_lf(segs[8], &rbr) ||
+      !parse_lf(segs[9], &rbl) ||
+      !parse_lf(segs[10], &h)) { return NULL; }
+
+  z0   = v2r(z0, cnc -> unit);
+  xmin = v2r(xmin, cnc -> unit);
+  ymin = v2r(ymin, cnc -> unit);
+  xmax = v2r(xmax, cnc -> unit);
+  ymax = v2r(ymax, cnc -> unit);
+  rtl  = v2r(rtl, cnc -> unit);
+  rtr  = v2r(rtr, cnc -> unit);
+  rbr  = v2r(rbr, cnc -> unit);
+  rbl  = v2r(rbl, cnc -> unit);
+  h    = v2r(h, cnc -> unit);
+
+  if ((xmax - xmin) < rbl + rbr)     { return NULL; }
+  if ((xmax - xmin) < rtl + rtr)     { return NULL; }
+  if ((ymax - ymin) < rbl + rtl)     { return NULL; }
+  if ((ymax - ymin) < rbr + rtr)     { return NULL; }
+  if ((xmax - xmin) < cnc -> tool.d) { return NULL; }
+  if ((ymax - ymin) < cnc -> tool.d) { return NULL; }
+  if (rtl < 0)                       { return NULL; }
+  if (rtr < 0)                       { return NULL; }
+  if (rbr < 0)                       { return NULL; }
+  if (rbl < 0)                       { return NULL; }
+  
+  return cutout(cnc -> mat.Fxy, cnc -> mat.Fz, cnc -> tool.d, z0, xmin, ymin, xmax, ymax, rtl, rtr, rbr, rbl, h, cnc -> mat.dz, A);
+}
+

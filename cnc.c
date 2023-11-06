@@ -29,7 +29,7 @@ int main() {
   bool exe  = false;
   bool skip = false;
   
-  int l, L, n, N, A;
+  int l, L, n, v, N, A;
 
   Action ** s;
   
@@ -90,17 +90,20 @@ int main() {
     } else if (parse_get(cnc, segs, L)) {
     } else if (parse_set(cnc, segs, L)) {
 
-      write_position(cnc),
+      write_config(cnc);
+      write_position(cnc);
       write_material(cnc);
       write_tool(cnc);
 
     }
     else if (exe && parse_comment(cnc, segs, L))                             { }
+    else if ((v = parse_spindle(cnc, segs, L)) != -1)                        { gpioWrite(SPND, v);          }
     else if (!hold && (s = parse_goto(cnc, segs, L)) != NULL)                { execute_sequence(cnc, s, 1); }
     else if (!hold && (s = parse_delta(cnc, segs, L)) != NULL)               { execute_sequence(cnc, s, 1); }
     else if (!hold && (s = parse_face(cnc, segs, L, &A)) != NULL)            { execute_sequence(cnc, s, A); }
     else if (!hold && (s = parse_square_pocket(cnc, segs, L, &A)) != NULL)   { execute_sequence(cnc, s, A); }
     else if (!hold && (s = parse_circular_pocket(cnc, segs, L, &A)) != NULL) { execute_sequence(cnc, s, A); }
+    else if (!hold && (s = parse_cutout(cnc, segs, L, &A)) != NULL)          { execute_sequence(cnc, s, A); }
     else if (!exe && (lines = parse_exe(cnc, segs, L, &N)) != NULL) {
       
       exe = true;
@@ -122,9 +125,9 @@ int main() {
     free(segs);
     free(line);
   }
-  
-  //.. freeing allocated memory
-  free(cnc);
+
+  //.. cleanup
+  cleanup(cnc);
   
   return 0;
 }
@@ -136,32 +139,64 @@ void initialize(CNC * cnc) {
 
   //.. setting pin modes
   gpioSetMode(PUL_X, PI_OUTPUT);
-  gpioSetMode(DIR_X, PI_OUTPUT);
-
   gpioSetMode(PUL_Y, PI_OUTPUT);
-  gpioSetMode(DIR_Y, PI_OUTPUT);
-  
   gpioSetMode(PUL_Z, PI_OUTPUT);
+  
+  gpioSetMode(DIR_X, PI_OUTPUT);
+  gpioSetMode(DIR_Y, PI_OUTPUT);
   gpioSetMode(DIR_Z, PI_OUTPUT);
 
+  gpioSetMode(STP_X, PI_INPUT);
+  gpioSetMode(STP_Y, PI_INPUT);
+  gpioSetMode(STP_Z, PI_INPUT);
+  
+  gpioSetMode(SPND, PI_OUTPUT);
+  
   //.. setting pin states
   gpioWrite(PUL_X, 1);
-  gpioWrite(DIR_X, 0);
-
-  gpioWrite(PUL_Y, 1);
-  gpioWrite(DIR_Y, 0);
+  gpioWrite(PUL_Y, 0);
+  gpioWrite(PUL_Z, 0);
   
-  gpioWrite(PUL_Z, 1);
+  gpioWrite(DIR_X, 0);
+  gpioWrite(DIR_Y, 0);
   gpioWrite(DIR_Z, 0);
 
+  gpioWrite(SPND, 1);
+  
   //.. loading machine state
+    read_config(cnc);
   read_position(cnc);
   read_material(cnc);
       read_tool(cnc);
-      
+
+    write_config(cnc);
   write_position(cnc);
   write_material(cnc);
       write_tool(cnc);      
+}
+
+void cleanup(CNC * cnc) {
+
+  //.. turning off motors
+  gpioWrite(PUL_X, 0);
+  gpioWrite(PUL_Y, 0);
+  gpioWrite(PUL_Z, 0);
+
+  gpioWrite(DIR_X, 0);
+  gpioWrite(DIR_Y, 0);
+  gpioWrite(DIR_Z, 0);
+
+  gpioWrite(SPND, 1);
+
+  //.. freeing allocated memory
+  if (cnc != NULL) { free(cnc); }
+}
+
+void write_config(CNC * cnc) {
+
+  FILE * file = fopen(CPATH, "w+");
+  fprintf(file, "%d\n", cnc -> unit);
+  fclose(file);
 }
 
 void write_tool(CNC * cnc) {

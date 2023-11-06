@@ -1,0 +1,80 @@
+set unittype mm;
+
+# Tool settings;
+set tooltype endmill;
+set toolsize 3;
+set flutelength 12;
+set toollength 44;
+
+# Feed rates;
+set feedrate 190;
+set plungerate 25;
+
+# Step sizes;
+set plungeinc 1.0;
+set transinc 0.5;
+
+# Facing;
+hold;
+spindle on;
+
+face 0 0 0 105 40 0.1;
+
+spindle off;
+
+# Cutting cell slots;
+hold;
+spindle on;
+
+set feedrate 125;
+
+circular_pocket -33 2.7 -0.1 0 9.5 13;
+circular_pocket -11 2.7 -0.1 0 9.5 13;
+circular_pocket 11 2.7 -0.1 0 9.5 13;
+circular_pocket 33 2.7 -0.1 0 9.5 13;
+
+spindle off;
+
+# Performing cutout;
+hold;
+spindle on;
+
+set feedrate 150;
+
+cutout -0.1 -47 -11.3 47 4.2 0 0 12.5 12.5 13;
+
+# Drilling screw holes;
+# Change tool to 2.05 mm drill bit;
+# Reduce spindle speed to 8000 RPM;
+# Place drill bit tip on surface;
+# Note: automatic re-zeroing;
+
+set z 0;
+goto 0 0 2;
+
+hold;
+
+# Center hole;
+spindle on;
+goto 0 0 0;
+goto 0 0 -14 25;
+goto 0 0 2;
+spindle off;
+
+# Left hole;
+goto -22 0 2;
+spindle on;
+goto -22 0 0;
+goto -22 0 -14 25;
+goto -22 0 2;
+spindle off;
+
+# Right hole;
+goto 22 0 2;
+spindle on;
+goto 22 0 0;
+goto 22 0 -14 25;
+goto 22 0 2;
+spindle off;
+
+goto 0 0 2;

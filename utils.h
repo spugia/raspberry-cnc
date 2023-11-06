@@ -11,3 +11,4 @@ double     sign(double);
 bool   parse_lf(char *, double *);
 double    asin2(double);
 double    acos2(double);
+int    quadrant(double);

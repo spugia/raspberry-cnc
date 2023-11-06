@@ -1,3 +1,6 @@
-// FUNCTION PROTOTYPES
+// FUNCTIONS
 
-double in2mm(double);
+double       r2v(double, enum UnitType);
+double       v2r(double, enum UnitType);
+
+char * unit_name(enum UnitType);
