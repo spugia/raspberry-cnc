@@ -1,0 +1,54 @@
+spindle off;
+set unittype mm;
+#                                        ;
+# ---------------------------------------;
+# -              TOP SIDE               -;
+# ---------------------------------------;
+#                                        ;
+
+# TOOL CHANGE;
+goto 0 0 5;
+toolchange /home/pi/raspberry-cnc/tools/18INX38IN_4F_FLATMILL.tool;
+set feedrate 300;
+set plungerate 2;
+set stepdown 0.2;
+set stepover 50;
+hold;
+set z 0;
+goto 0 0 5;
+
+# RELEASE;
+spindle on;
+hold;
+face 0 0 -0.8 110 105 1.0;
+spindle off;
+
+# PLANE;
+set stepover 25;
+spindle on;
+hold;
+face 0 0 0 71 100 0.15;
+spindle off;
+
+spindle on;
+hold;
+face 0 40 0 100 20 0.15;
+hold;
+face 0 -42.5 0 100 15 0.15;
+spindle off;
+
+# LED POCKET;
+hold;
+spindle on;
+square_pocket 0 0 -0.15 13 35 1.5;
+spindle off;
+
+# TOOL CHANGE;
+
+# COUNTER SINK;
+
+# TOOL CHANGE;
+
+# ENGRAVE;
+
+goto 0 0 5;

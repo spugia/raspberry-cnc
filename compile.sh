@@ -1,1 +1,1 @@
-gcc cnc.c -l pigpio -lm -o cnc -O3
+gcc cnc.c -l pigpio -lm -pthread -lncurses -o cnc

@@ -1,9 +1,0 @@
-X cutout cam
-- slot cam
-- drill cam
-- bore cam (spiral hole)
-
-- error checking for tool length / flute length
-- limit switches
-- light
-- vacuum / fan

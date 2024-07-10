@@ -1,10 +1,10 @@
 #include "control.h"
 
-double FX_max(void) { return 1000000000 / (2 * SPR_X * RPI_X * SPS_23) * 60; }
+double FX_max(void) { return 1000000000 / (SPR_X * RPI_X * SPS_23) * 60; }
 
-double FY_max(void) { return 1000000000 / (2 * SPR_Y * RPI_Y * SPS_23) * 60; }
+double FY_max(void) { return 1000000000 / (SPR_Y * RPI_Y * SPS_23) * 60; }
 
-double FZ_max(void) { return 1000000000 / (2 * SPR_Z * RPI_Z * SPS_23) * 60; }
+double FZ_max(void) { return 1000000000 / (SPR_Z * RPI_Z * SPS_23) * 60; }
 
 double FXY_max(void) {
 
@@ -101,7 +101,7 @@ void compile_linear(Action * action, double X, double Y, double Z, unsigned int 
   
   //.. allocating memory
   (*S) = Sx + Sy + Sz;
-  
+
   *mx     = malloc(sizeof(unsigned int)       * (*S));
   *my     = malloc(sizeof(unsigned int)       * (*S));
   *mz     = malloc(sizeof(unsigned int)       * (*S));
@@ -246,16 +246,16 @@ void compile_linear(Action * action, double X, double Y, double Z, unsigned int 
   *nz    =       (unsigned int *) realloc(*nz,    sizeof(unsigned int)       * (*S));
 }
 
-void compile_curve(Action * action, double X, double Y, unsigned int ** mx, unsigned int ** my, unsigned int ** mz, unsigned int ** nx, unsigned int ** ny, unsigned int ** nz, unsigned long long ** times, int * S) {
+void compile_curve(Action * action, double X, double Y, double Z, unsigned int ** mx, unsigned int ** my, unsigned int ** mz, unsigned int ** nx, unsigned int ** ny, unsigned int ** nz, unsigned long long ** times, int * S) {
 
   //.. angles
   double T1 = atan2(Y - action -> Y0, X - action -> X0) + 2 * M_PI * ((Y - action -> Y0) < 0);
   double T2 = atan2(action -> Y - action -> Y0, action -> X - action -> X0) + 2 * M_PI * ((action -> Y - action -> Y0) < 0);
 
-  if (T1 == 0)       { T1  = 2 * M_PI; }
-  if (T2 > 2 * M_PI) { T2 -= 2 * M_PI; }
-
-  if (lfeq(T1, T2)) { T2 += 2 * M_PI; }
+  if (T1 > M_PI && lfeq(T2, 0)) { T2 += 2 * M_PI; }
+  if (T2 > M_PI && lfeq(T1, 0)) { T1 += 2 * M_PI; }
+  
+  if (lfeq(T1, T2) || lfeq(fabs(T1 - T2), 2 * M_PI)) { T2 += 2 * M_PI; } //.. complete circle
   
   //.. radius
   double R = sqrt(pow(X - action -> X0, 2) + pow(Y - action -> Y0, 2));
@@ -263,9 +263,12 @@ void compile_curve(Action * action, double X, double Y, unsigned int ** mx, unsi
   //.. steps  
   double dxs = 1 / (RPI_X * SPR_X);
   double dys = 1 / (RPI_Y * SPR_Y);
+  double dzs = 1 / (RPI_Z * SPR_Z);
   
   //.. allocating data structures
-  (*S) = round(5 * R / dxs) + round(5 * R / dys);
+  unsigned long long zsteps = fabs(Z - action -> Z) / dzs;
+  
+  (*S) = round(5 * R / dxs) + round(5 * R / dys) + zsteps;
 
   *times = malloc(sizeof(unsigned long long) * (*S));
   *mx    = malloc(sizeof(unsigned int)       * (*S));
@@ -286,8 +289,7 @@ void compile_curve(Action * action, double X, double Y, unsigned int ** mx, unsi
   
   if (lfeq(R, 0)) { return; }
   
-  //.. compiling steps
-  
+  //.. compiling x-y steps  
   double dmin = dxs;
   if (dys < dmin) { dmin = dys; }
 
@@ -304,14 +306,14 @@ void compile_curve(Action * action, double X, double Y, unsigned int ** mx, unsi
   double l;
   double L = fabs(T2 - T1) * R;
   double Tc;
-  
+
   unsigned long long time = 0;
   
   for (double T = T1 ; dT > 0 && T <= T2 || dT < 0 && T >= T2 ; T += dT) {
 
     ix = (int) round(R * cos(T) / dxs);
     iy = (int) round(R * sin(T) / dys);
-
+    
     if (ix != ixl || iy != iyl) {
  
       dl = sqrt(pow((double) (ix - ixl) * dxs, 2) + pow((double) (iy - iyl) * dys, 2));
@@ -352,6 +354,44 @@ void compile_curve(Action * action, double X, double Y, unsigned int ** mx, unsi
 	
       ixl = ix;
       iyl = iy;
+    }
+  }
+
+  //.. compiling z-steps
+  unsigned long long s2;
+
+  unsigned long long dt = 0;
+  if (zsteps > 0) { dt = time / zsteps; }
+  
+  time = 0;
+
+  bool duplicate;
+  
+  for (unsigned long long s = 1 ; s <= zsteps ; s++) {
+
+    time += dt;
+    
+    duplicate = false;
+
+    for (int s2 = 0 ; s2 < *S ; ++s2) {
+
+      if ((*times)[s2] == time) {
+
+        (*mz)[s2] = PUL_Z;
+        (*nz)[s2] = (Z - action -> Z) < 0;
+        
+        duplicate = true;
+        break;
+      }
+    }
+
+    if (!duplicate) {
+
+      (*times)[*S] = time;
+      (*mz)[*S]    = PUL_Z;
+      (*nz)[*S]    = (Z - action -> Z) < 0;
+      
+      (*S)++;
     }
   }
   
@@ -439,15 +479,19 @@ void splice_action(unsigned long long * times, struct timespec ** steps, int S) 
   }
 }
 
-void execute_action(struct timespec * steps, unsigned int * mx, unsigned int * my, unsigned int * mz, unsigned int * nx, unsigned int * ny, unsigned int * nz, int S) {
+void execute_action(CNC * cnc, struct timespec * steps, unsigned int * mx, unsigned int * my, unsigned int * mz, unsigned int * nx, unsigned int * ny, unsigned int * nz, int S, bool * pause, bool * stop) {
 
   struct timespec delay;
 
   delay.tv_sec  = 0;
   delay.tv_nsec = SPS_23;
+
+  double dx = 1 / (RPI_X * SPR_X);
+  double dy = 1 / (RPI_Y * SPR_Y);
+  double dz = 1 / (RPI_Z * SPR_Z);
   
   for (int s = 0 ; s < S ; ++s) {
-
+    
     //.. setting direction
     if (s == 0 || nx[s] != nx[s-1]) { gpioWrite(DIR_X, nx[s]); }
     if (s == 0 || ny[s] != ny[s-1]) { gpioWrite(DIR_Y, ny[s]); }
@@ -463,90 +507,165 @@ void execute_action(struct timespec * steps, unsigned int * mx, unsigned int * m
     if (my[s] > 0) { gpioWrite(my[s], 0); }
     if (mz[s] > 0) { gpioWrite(mz[s], 0); }
     nanosleep(&(steps[s]), NULL);
+
+    //.. updating position
+    cnc -> X += (double) (mx[s] > 0) * dx * (nx[s] ? -1 :  1);
+    cnc -> Y += (double) (my[s] > 0) * dy * (ny[s] ? -1 :  1);
+    cnc -> Z += (double) (mz[s] > 0) * dz * (nz[s] ?  1 : -1);
+    
+    //.. hold
+    if (*stop)     {              return; }
+    while (*pause) { if (*stop) { return; } }
   }  
 }
 
-void execute_sequence(CNC * cnc, Action ** actions, int A) {
+bool execute_sequence(TARG * targ, Action ** actions, int A) {
 
-  int S;
-
-  unsigned int       * mx;
-  unsigned int       * my;
-  unsigned int       * mz;
-  unsigned int       * nx;
-  unsigned int       * ny;
-  unsigned int       * nz;
-  unsigned long long * times;
-  struct timespec    * steps;
+  //.. lock console
+  noecho();
+  nodelay(stdscr, true);
+  refresh();
   
-  for (int a = 0 ; a < A ; ++a) {
+  targ -> pause = false;
+  targ -> stop  = false;
 
-    mx     = NULL;
-    my     = NULL;
-    mz     = NULL;
-    nx     = NULL;
-    ny     = NULL;
-    nz     = NULL;
-    steps  = NULL;
-    times  = NULL;
+  int a;
 
-    //.. executing action
+  for (a = 0 ; a < A ; a++) {
+
+    //.. printing to console
     switch (actions[a] -> type) {
 
     case Linear:
-      
-      compile_linear(actions[a], cnc -> X, cnc -> Y, cnc -> Z, &mx, &my, &mz, &nx, &ny, &nz, &times, &S);
-      printf("> %.2f%% - P: (%.6f, %.6f, %.6f) %s X F%.4f %s/min\n", (double) (a + 1) / (double) A * 100,
-	                                                             r2v(actions[a] -> X, cnc -> unit),
-	                                                             r2v(actions[a] -> Y, cnc -> unit),
-	                                                             r2v(actions[a] -> Z, cnc -> unit),
-	                                                             unit_name(cnc -> unit),
-	                                                             r2v(actions[a] -> F, cnc -> unit),
-	                                                             unit_name(cnc -> unit));
 
+      printw("> %.2f%% - P: (%.6f, %.6f, %.6f) %s X F%.4f %s/min\n", (double) (a + 1) / (double) A * 100,
+                                                                     r2v(actions[a] -> X, targ -> cnc -> unit),
+                                                                     r2v(actions[a] -> Y, targ -> cnc -> unit),
+                                                                     r2v(actions[a] -> Z, targ -> cnc -> unit),
+                                                                     unit_name(targ -> cnc -> unit),
+                                                                     r2v(actions[a] -> F, targ -> cnc -> unit),
+                                                                     unit_name(targ -> cnc -> unit));
+      refresh();
+      
       break;
 
     case Curve:
 
-      compile_curve(actions[a], cnc -> X, cnc -> Y, &mx, &my, &mz, &nx, &ny, &nz, &times, &S);
-      printf("> %.2f%% o P0: (%.6f, %.6f) %s P: (%.6f, %.6f) %s X F%.4f %s/min\n", (double) (a + 1) / (double) A * 100,
-	                                                                           r2v(actions[a] -> X0, cnc -> unit),
-	                                                                           r2v(actions[a] -> Y0, cnc -> unit),
-	                                                                           unit_name(cnc -> unit),
-	                                                                           r2v(actions[a] -> X, cnc -> unit),
-	                                                                           r2v(actions[a] -> Y, cnc -> unit),
-	                                                                           unit_name(cnc -> unit),
-	                                                                           r2v(actions[a] -> F, cnc -> unit),
-	                                                                           unit_name(cnc -> unit));
-
+      printw("> %.2f%% o P0: (%.6f, %.6f) %s P: (%.6f, %.6f, %.6f) %s X F%.4f %s/min\n", (double) (a + 1) / (double) A * 100,
+                                                                                         r2v(actions[a] -> X0, targ -> cnc -> unit),
+                                                                                         r2v(actions[a] -> Y0, targ -> cnc -> unit),
+                                                                                         unit_name(targ -> cnc -> unit),
+                                                                                         r2v(actions[a] -> X, targ -> cnc -> unit),
+                                                                                         r2v(actions[a] -> Y, targ -> cnc -> unit),
+                                                                                         r2v(actions[a] -> Z, targ -> cnc -> unit),
+                                                                                         unit_name(targ -> cnc -> unit),
+                                                                                         r2v(actions[a] -> F, targ -> cnc -> unit),
+                                                                                         unit_name(targ -> cnc -> unit));
+      refresh();
+      
       break;
 
     default: break;
     }
 
-    sort_action(times, mx, my, mz, nx, ny, nz, S);
-    splice_action(times, &steps, S);
-    execute_action(steps, mx, my, mz, nx, ny, nz, S);
+    //.. execute action
+    targ -> action = actions[a];
 
-    //.. updating postion
-    if (!isnan(actions[a] -> X)) { cnc -> X = actions[a] -> X; }
-    if (!isnan(actions[a] -> Y)) { cnc -> Y = actions[a] -> Y; }
-    if (!isnan(actions[a] -> Z)) { cnc -> Z = actions[a] -> Z; }
+    do {
+
+      switch (getch()) {
+      case 27:
+	targ -> stop = true;
+	break;
+
+      case 32:
+	targ -> pause = !(targ -> pause);
+	if (targ -> pause) { printw("> paused\n");  refresh(); }
+	else               { printw("> resumed\n"); refresh(); }
+	break;
+	
+      default: break;
+      }
+
+    } while (targ -> action != NULL && !(targ -> stop));
     
-    write_position(cnc);
-    
-    //.. freeing memory
-    if (mx != NULL)         { free(mx);         mx = NULL;         }
-    if (my != NULL)         { free(my);         my = NULL;         }
-    if (mz != NULL)         { free(mz);         mz = NULL;         }
-    if (nx != NULL)         { free(nx);         nx = NULL;         }
-    if (ny != NULL)         { free(ny);         ny = NULL;         }
-    if (nz != NULL)         { free(nz);         nz = NULL;         }
-    if (times != NULL)      { free(times);      times = NULL;      }
-    if (steps != NULL)      { free(steps);      steps = NULL;      }
-    if (actions[a] != NULL) { free(actions[a]); actions[a] = NULL; }
+    if (targ -> stop) {
+
+      printw("> sequence interrupted\n");
+      refresh();
+
+      break;
+    }
   }
 
   //.. cleanup
+  for (a++ ; a < A ; a++) { free(actions[a]); }
   free(actions);
+
+  //.. reset console
+  echo();
+  nodelay(stdscr, false);
+  refresh();
+
+  return targ -> stop;
+}
+
+void * control_thread(void * args) {
+
+  TARG * targ = (TARG *) args;
+
+  CNC * cnc  = targ -> cnc;
+  
+  unsigned int * mx, * my, * mz, * nx, * ny, * nz;
+  unsigned long long * times;
+  struct timespec * steps;
+
+  int S;
+  
+  mx = my = mz = nx = ny = nz = NULL;
+  times = NULL;
+  steps = NULL;
+
+  do {
+
+    if (targ -> action != NULL) {
+
+      //.. compiling actions
+      switch (targ -> action -> type) {
+
+      case Linear:
+	compile_linear(targ -> action, cnc -> X, cnc -> Y, cnc -> Z, &mx, &my, &mz, &nx, &ny, &nz, &times, &S);
+	break;
+
+      case Curve:
+	compile_curve(targ -> action, cnc -> X, cnc -> Y, cnc -> Z, &mx, &my, &mz, &nx, &ny, &nz, &times, &S);
+      	break;
+	
+      default: break;
+      }
+      
+      sort_action(times, mx, my, mz, nx, ny, nz, S);
+      splice_action(times, &steps, S);
+
+      //.. execute action
+      execute_action(targ -> cnc, steps, mx, my, mz, nx, ny, nz, S, &(targ -> pause), &(targ -> stop));
+
+      //.. updating postion
+      write_position(targ -> cnc);
+      
+      //.. freeing memory
+      if (mx != NULL)             { free(mx);             mx = NULL;             }
+      if (my != NULL)             { free(my);             my = NULL;             }
+      if (mz != NULL)             { free(mz);             mz = NULL;             }
+      if (nx != NULL)             { free(nx);             nx = NULL;             }
+      if (ny != NULL)             { free(ny);             ny = NULL;             }
+      if (nz != NULL)             { free(nz);             nz = NULL;             }
+      if (times != NULL)          { free(times);          times = NULL;          }
+      if (steps != NULL)          { free(steps);          steps = NULL;          }
+      if (targ -> action != NULL) { free(targ -> action); targ -> action = NULL; }
+    }
+    
+  } while (!(targ -> exit));
+  
+  return NULL;
 }

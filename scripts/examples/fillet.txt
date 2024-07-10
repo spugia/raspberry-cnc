@@ -1,0 +1,20 @@
+spindle off;
+set unittype mm;
+
+# TOOL CHANGE;
+toolchange /home/pi/raspberry-cnc/tools/18INX38IN_4F_FLATMILL.tool;
+set feedrate 250;
+set plungerate 2;
+set stepdown 0.2;
+set stepover 50;
+
+# FILLETS;
+set stepdown 0.25;
+spindle on;
+hold;
+fillet 5 5 0 1.5875 0 0.5;
+fillet 5 5 0 1.5875 90 0.5;
+fillet 5 5 0 1.5875 180 0.5;
+fillet 5 5 0 1.5875 270 0.5;
+fillet 5 5 0 1.5875 360 0.5;
+spindle off;

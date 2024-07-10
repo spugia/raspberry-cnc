@@ -1,7 +1,7 @@
 // ENUMERATORS
 
-enum ToolType { NONE = 0, ENDMILL = 1 };
-enum UnitType { IN   = 0, MM      = 1 };
+enum ToolType { NONE = 0, FLATMILL = 1, BALLMILL = 2, CHAMFER = 3, DRILL = 4 };
+enum UnitType { IN = 0, MM = 1 };
 
 // STRUCTURES
 
@@ -9,9 +9,10 @@ typedef struct TOOL {
 
   enum ToolType type;
   
-  double d;  //.. tool diameter [in]
-  double Lf; //.. tool flute length
-  double Lt; //.. total tool length
+  double Dc; //.. mill diameter [in]
+  double Ds; //.. shank diameter [in]
+  double Lc; //.. tool cutting length [in]
+  double Lt; //.. total tool length [in]
   
 } TOOL;
 
@@ -20,8 +21,8 @@ typedef struct MAT {
   double Fxy; //.. translation feed rate [in/min]
   double Fz;  //.. plunge feed rate [in/min]
 
-  double dz;  //.. cutting depth
-  double dr;  //.. radial step size
+  double dz;  //.. step down
+  double dr;  //.. step over
 
 } MAT;
 
@@ -42,11 +43,10 @@ typedef struct CNC {
 } CNC;
 
 // FUNCTIONS
+void       initialize(CNC *); 
+void          cleanup(CNC *);
 
-void     initialize(CNC *); 
-void        cleanup(CNC *);
-
-void write_position(CNC *);
-void write_material(CNC *);
-void     write_tool(CNC *);
-void   write_config(CNC *);
+void   write_position(CNC *);
+void   write_material(CNC *);
+void       write_tool(CNC *);
+void     write_config(CNC *);

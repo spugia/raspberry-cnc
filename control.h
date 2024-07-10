@@ -23,10 +23,10 @@
 //.. steps-per-revolution
 #define SPR_X 400.0F
 #define SPR_Y 400.0F
-#define SPR_Z 200.0F
+#define SPR_Z 400.0F
 
 //.. feed acceleration [in/min/in]
-#define FAR  150.0F
+#define FAR  100.0F
 #define FMIN 1.0F
 
 //.. NEMA23 pulsing frequency (limited by pi)
@@ -53,23 +53,40 @@ typedef struct Action {
 
 } Action;
 
+typedef struct TARG {
+
+  bool pause;
+  bool stop;
+  bool exit;
+
+  CNC * cnc;
+
+  double X;
+  double Y;
+  double Z;
+  
+  Action * action;
+
+} TARG;
+
 // FUNCTIONS
 
-double          FX_max(void);
-double          FY_max(void);
-double          FZ_max(void);
-double         FXY_max(void);
-double        FXYZ_max(void);
-double           F_max(double, double, double);
-double         F_accel(double, double, double, double);
+double           FX_max(void);
+double           FY_max(void);
+double           FZ_max(void);
+double          FXY_max(void);
+double         FXYZ_max(void);
+double            F_max(double, double, double);
+double          F_accel(double, double, double, double);
 
-Action * create_linear(double, double, double, double);
-Action *  create_curve(double, double, double, double, double, double);
+Action *  create_linear(double, double, double, double);
+Action *   create_curve(double, double, double, double, double, double);
 
-void    compile_linear(Action *, double, double, double, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned long long **, int *);
-void     compile_curve(Action *, double, double, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned long long **, int *);
+void     compile_linear(Action *, double, double, double, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned long long **, int *);
+void      compile_curve(Action *, double, double, double, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned long long **, int *);
 
-void       sort_action(unsigned long long *, unsigned int *, unsigned int *, unsigned int *, unsigned int *, unsigned int *, unsigned int *, int);
-void     splice_action(unsigned long long *, struct timespec **, int);
-void    execute_action(struct timespec *, unsigned int *, unsigned int *, unsigned int *, unsigned int *, unsigned int *, unsigned int *, int);
-void  execute_sequence(CNC *, Action **, int);
+void        sort_action(unsigned long long *, unsigned int *, unsigned int *, unsigned int *, unsigned int *, unsigned int *, unsigned int *, int);
+void      splice_action(unsigned long long *, struct timespec **, int);
+void     execute_action(CNC *, struct timespec *, unsigned int *, unsigned int *, unsigned int *, unsigned int *, unsigned int *, unsigned int *, int, bool *, bool *);
+void *   control_thread(void *);
+bool   execute_sequence(TARG *, Action **, int);

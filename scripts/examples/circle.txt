@@ -1,13 +1,16 @@
-set feedrate 5;
-set plungerate 3;
+set unittype mm;
 
-set plungeinc 0.5;
-set transinc 0.5;
+toolchange /home/pi/raspberry-cnc/tools/18INX38IN_4F_FLATMILL.tool;
+
+set feedrate 50;
+set plungerate 30;
+set stepdown 0.5;
+set stepover 50;
 
 spindle on;
 
 hold;
 
-circular_pocket 0 0 0 0.0 0.3 0.5;
+circular_pocket 0 0 0 0 5 1;
 
 spindle off;

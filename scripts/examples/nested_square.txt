@@ -1,0 +1,15 @@
+spindle off;
+set unittype mm;
+
+# TOOL CHANGE;
+toolchange /home/pi/raspberry-cnc/tools/18INX38IN_4F_FLATMILL.tool;
+set feedrate 200;
+set plungerate 10;
+set stepdown 1.0;
+set stepover 50;
+
+# SQUARE POCKET;
+spindle on;
+hold;
+square_pocket 0 0 -1 14.5 14.5 40 40 3;
+spindle off;

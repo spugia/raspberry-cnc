@@ -1,23 +1,23 @@
 set unittype mm;
 
-# Tool settings;
-set tooltype endmill;
-set toolsize 3;
-set flutelength 12;
-set toollength 44;
-
-# Feed rates;
+# FEED SETTINGS;
 set feedrate 190;
 set plungerate 25;
+set stepdown 1.0;
+set stepover 50;
 
-# Step sizes;
-set plungeinc 1.0;
-set transinc 0.5;
+# TOOL SETTINGS;
+set tooltype flatmill;
+set cuttingdiameter 3;
+set shankdiameter 3;
+set cuttinglength 12;
+set toollength 44;
 
 # Facing;
 hold;
 spindle on;
 
+skip;
 face 0 0 0 105 40 0.1;
 
 spindle off;
@@ -26,7 +26,7 @@ spindle off;
 hold;
 spindle on;
 
-set feedrate 125;
+set feedrate 200;
 
 circular_pocket -33 2.7 -0.1 0 9.5 13;
 circular_pocket -11 2.7 -0.1 0 9.5 13;
@@ -53,28 +53,11 @@ set z 0;
 goto 0 0 2;
 
 hold;
-
-# Center hole;
 spindle on;
-goto 0 0 0;
-goto 0 0 -14 25;
-goto 0 0 2;
-spindle off;
 
-# Left hole;
-goto -22 0 2;
-spindle on;
-goto -22 0 0;
-goto -22 0 -14 25;
-goto -22 0 2;
-spindle off;
+drill 0 0 0 14;
+drill -22 0 0 14;
+drill 22 0 0 14;
 
-# Right hole;
-goto 22 0 2;
-spindle on;
-goto 22 0 0;
-goto 22 0 -14 25;
-goto 22 0 2;
 spindle off;
-
-goto 0 0 2;
+goto 0 0 5;

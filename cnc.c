@@ -8,6 +8,8 @@
 #include <ctype.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <pthread.h>
+#include <ncurses.h>
 
 #include "cnc.h"
 #include "utils.c"
@@ -18,25 +20,48 @@
 
 int main() {
 
+  //.. initialize console
+  initscr();
+  echo();
+  scrollok(stdscr, true);
+  keypad(stdscr, true);
+  
+  refresh();
+  
   //.. initial conditions
   CNC * cnc = malloc(sizeof(struct CNC));
 
   //.. initializing machine
   initialize(cnc);
+
+  //.. initialize driver thread
+  pthread_t thread;
+
+  TARG targ;
+  targ.pause  = false;
+  targ.stop   = false;
+  targ.exit   = false;
+  targ.action = NULL;
+  targ.cnc    = cnc;
+  
+  pthread_create(&thread, NULL, control_thread, (void *) (&targ));
   
   //.. command loop
   bool hold = false;
   bool exe  = false;
   bool skip = false;
   
-  int l, L, n, v, N, A;
+  int l, L, n, dn, v, N, A, T;
 
   Action ** s;
-  
+
+  char * unitcmd;
+    
   char ** lines;
+  char ** tlines;
   
   for (;;) {
-
+    
     //.. recieving line
     char * line;
 
@@ -44,8 +69,8 @@ int main() {
     else if (exe && n < N) { line = lines[n++];  }
     else if (exe) {
 
-      printf("> program complete\n");
-
+      printl("> program complete");
+      
       free(lines);
       lines = NULL;
 
@@ -61,17 +86,20 @@ int main() {
     
     if (!exe && !hold && parse_exit(segs, L)) {
 
+      //.. exit
       free(segs);
       free(line);
-
+      
       break;
 
     } else if (!hold && exe && parse_hold(segs, L)) {
 
+      //.. hold
       hold = true;
             
     } else if (hold && parse_stop(segs, L)) {
 
+      //.. stop
       free(lines);
       lines = NULL;
 
@@ -80,39 +108,74 @@ int main() {
       
     } else if (hold && parse_cont(segs, L)) {
 
+      //.. continue
       hold = false;
 
     } else if (exe && parse_skip(segs, L)) {
 
+      //.. skip
       hold = false;
       skip = true;
+
+    } else if (exe && (tlines = parse_toolchange(cnc, segs, L, &T)) != NULL) {
+      
+      //.. tool change
+      unitcmd = malloc(sizeof(char) * 256);
+      sprintf(unitcmd, "set unittype %s", unittype_name(cnc -> unit));
+
+      lines = realloc(lines, sizeof(char *) * (N + T + 1));
+
+      //.. shift commands
+      for (dn = N - 1 ; dn >= n ; dn--) {
+
+	lines[dn + T + 1] = lines[dn];
+      }
+
+      //.. insert tool change
+      for (dn = 0 ; dn < T ; dn++) {
+
+        lines[n + dn] = tlines[dn];
+      }
+
+      //.. reset units
+      lines[n + T] = unitcmd;
+
+      N += (T + 1);
+
+      free(tlines);
+      tlines = NULL;
       
     } else if (parse_get(cnc, segs, L)) {
     } else if (parse_set(cnc, segs, L)) {
 
+      //.. set
       write_config(cnc);
       write_position(cnc);
       write_material(cnc);
       write_tool(cnc);
-
     }
     else if (exe && parse_comment(cnc, segs, L))                             { }
-    else if ((v = parse_spindle(cnc, segs, L)) != -1)                        { gpioWrite(SPND, v);          }
-    else if (!hold && (s = parse_goto(cnc, segs, L)) != NULL)                { execute_sequence(cnc, s, 1); }
-    else if (!hold && (s = parse_delta(cnc, segs, L)) != NULL)               { execute_sequence(cnc, s, 1); }
-    else if (!hold && (s = parse_face(cnc, segs, L, &A)) != NULL)            { execute_sequence(cnc, s, A); }
-    else if (!hold && (s = parse_square_pocket(cnc, segs, L, &A)) != NULL)   { execute_sequence(cnc, s, A); }
-    else if (!hold && (s = parse_circular_pocket(cnc, segs, L, &A)) != NULL) { execute_sequence(cnc, s, A); }
-    else if (!hold && (s = parse_cutout(cnc, segs, L, &A)) != NULL)          { execute_sequence(cnc, s, A); }
+    else if ((v = parse_spindle(cnc, segs, L)) != -1)                        { gpioWrite(SPND, v); }
+    else if ((s = parse_goto(cnc, segs, L)) != NULL)                         { if (execute_sequence(&targ, s, 1) && exe) { hold = true; } }
+    else if ((s = parse_delta(cnc, segs, L)) != NULL)                        { if (execute_sequence(&targ, s, 1) && exe) { hold = true; } }
+    else if (!hold && (s = parse_face(cnc, segs, L, &A)) != NULL)            { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
+    else if (!hold && (s = parse_square_pocket(cnc, segs, L, &A)) != NULL)   { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
+    else if (!hold && (s = parse_circular_pocket(cnc, segs, L, &A)) != NULL) { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
+    else if (!hold && (s = parse_cutout(cnc, segs, L, &A)) != NULL)          { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
+    else if (!hold && (s = parse_drill(cnc, segs, L, &A)) != NULL)           { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
+    else if (!hold && (s = parse_bore(cnc, segs, L, &A)) != NULL)            { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
+    else if (!hold && (s = parse_fillet(cnc, segs, L, &A)) != NULL)          { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
+    else if (!hold && (s = parse_engrave(cnc, segs, L, &A)) != NULL)         { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
     else if (!exe && (lines = parse_exe(cnc, segs, L, &N)) != NULL) {
       
       exe = true;
       n = 0;
       
     } else {
-      
-      printf("> invalid command or arguments\n");
 
+      //.. invalid
+      printl("> invalid command or arguments");
+      
       if (exe) {
 	
 	free(lines);
@@ -126,6 +189,13 @@ int main() {
     free(line);
   }
 
+  //.. stop thread
+  targ.pause = false;
+  targ.stop  = true;
+  targ.exit  = true;
+
+  pthread_join(thread, NULL);
+  
   //.. cleanup
   cleanup(cnc);
   
@@ -153,7 +223,7 @@ void initialize(CNC * cnc) {
   gpioSetMode(SPND, PI_OUTPUT);
   
   //.. setting pin states
-  gpioWrite(PUL_X, 1);
+  gpioWrite(PUL_X, 0);
   gpioWrite(PUL_Y, 0);
   gpioWrite(PUL_Z, 0);
   
@@ -176,7 +246,7 @@ void initialize(CNC * cnc) {
 }
 
 void cleanup(CNC * cnc) {
-
+  
   //.. turning off motors
   gpioWrite(PUL_X, 0);
   gpioWrite(PUL_Y, 0);
@@ -190,6 +260,9 @@ void cleanup(CNC * cnc) {
 
   //.. freeing allocated memory
   if (cnc != NULL) { free(cnc); }
+
+  //.. restore console
+  endwin();
 }
 
 void write_config(CNC * cnc) {
@@ -202,7 +275,7 @@ void write_config(CNC * cnc) {
 void write_tool(CNC * cnc) {
 
   FILE * file = fopen(TPATH, "w+");
-  fprintf(file, "%d\n%.8f\n%.8f\n%.8f\n", cnc -> tool.type, cnc -> tool.d, cnc -> tool.Lf, cnc -> tool.Lt);
+  fprintf(file, "%d\n%.8f\n%.8f\n%.8f\n%.8f\n", cnc -> tool.type, cnc -> tool.Dc, cnc -> tool.Ds, cnc -> tool.Lc, cnc -> tool.Lt);
   fclose(file);
 }
 

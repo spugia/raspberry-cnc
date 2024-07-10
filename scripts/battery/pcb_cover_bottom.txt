@@ -1,0 +1,173 @@
+spindle off;
+set unittype mm;
+
+#                                        ;
+# ---------------------------------------;
+# -          PCB SIDE (BOTTOM)          -;
+# ---------------------------------------;
+#                                        ;
+
+# TOOL CHANGE;
+goto 0 0 5;
+toolchange /home/pi/raspberry-cnc/tools/18INX38IN_4F_FLATMILL.tool;
+set feedrate 250;
+set plungerate 2;
+set stepdown 0.2;
+set stepover 50;
+hold;
+set z 0;
+goto 0 0 5;
+
+# FACING;
+spindle on;
+hold;
+face 0 0 0 100 95 0.25;
+spindle off;
+
+# KS / RBF POCKET;
+goto -6.379 -41.1725 5;
+spindle on;
+hold;
+square_pocket -6.379 -41.1725 -0.25 35 14.175 5.25;
+spindle off;
+
+# PC104 POCKET;
+goto 42.4665 0 5;
+spindle on;
+hold;
+square_pocket 42.4665 0 -0.25 17.175 67 5.25;
+spindle off;
+
+# PCB POCKETS;
+goto -3.25 0.5 5;
+spindle on;
+hold;
+square_pocket -3.25 0.5 -0.25 71.258 66.17 3.5;
+hold;
+square_pocket 22.5 -36.4975 -0.25 19.758 14.175 3.5;
+hold;
+square_pocket 22.5 -44.335 -0.25 9.0 7.85 1.75;
+hold;
+square_pocket 22.5 36.9975 -0.25 19.758 13.175 3.5;
+hold;
+square_pocket -32.129 36.9975 -0.25 13.5 13.175 3.5;
+hold;
+square_pocket -41.0415 0 -0.25 10.675 61.17 3.5;
+hold;
+square_pocket -32.129 -36.4975 -0.25 13.5 14.175 3.5;
+spindle off;
+
+# FILLETS;
+set stepdown 0.5;
+set plungerate 25;
+set feedrate 100;
+goto 11.0335 35.1725 5;
+spindle on;
+hold;
+fillet 11.0335 35.1725 -0.25 1.5875 270 3.5;
+hold;
+fillet -23.7915 35.1725 -0.25 1.5875 180 3.5;
+hold;
+fillet -40.4665 32.1725 -0.25 1.5875 270 3.5;
+hold;
+fillet -40.4665 -32.1725 -0.25 1.5875 0 3.5;
+hold;
+fillet -22.2915 -35.6725 -0.25 3.0875 90 3.5;
+hold;
+fillet 9.5335 -35.6725 -0.25 3.0875 0 3.5;
+spindle off;
+
+# TOOL CHANGE;
+goto 0 0 5;
+toolchange /home/pi/raspberry-cnc/tools/2MMX8MM_2F_FLATMILL.tool;
+set feedrate 150;
+set plungerate 1;
+set stepdown 0.2;
+set stepover 50;
+hold;
+set z 0;
+goto 0 0 5;
+
+# M3 HOLES;
+goto 37 -40 5;
+spindle on;
+hold;
+bore 37 -40 0 3.2 5.5;
+hold;
+bore 42.799 -36.83 0 3.2 5.5;
+hold;
+bore 42.799 36.83 0 3.2 5.5;
+hold;
+bore 37 40 0 3.2 5.5;
+hold;
+bore -42.799 40.005 0 3.2 5.5;
+hold;
+bore -42.799 33.75 0 3.2 5.5;
+hold;
+bore -42.799 -33.75 0 3.2 5.5;
+hold;
+bore -42.799 -40.005 0 3.2 5.5;
+spindle off;
+
+# SWITCH HOLE;
+goto -17.879 40.085 5;
+spindle on;
+hold;
+bore -17.879 40.085 0 2.5 5.5;
+spindle off;
+
+# CUTOUT;
+goto -48.879 -46.085 5;
+spindle on;
+hold;
+cutout 0 -48.879 -46.085 48.879 46.085 0 0 0 0 5.25;
+spindle off;
+
+# CHAMFERS;
+# TODO;
+
+# TOOL CHANGE;
+goto 0 0 5;
+toolchange /home/pi/raspberry-cnc/tools/1MMX5MM_2F_FLATMILL.tool;
+set feedrate 75;
+set plungerate 1;
+set stepdown 0.15;
+set stepover 40;
+hold;
+set z 0;
+goto 0 0 5;
+
+# LED POCKETS;
+goto -17.879 40.085 5;
+spindle on;
+hold;
+square_pocket -17.879 40.085 0 11 7 2;
+hold;
+square_pocket -9.879 40.085 0 2.5 6 1;
+hold;
+square_pocket -6.379 40.085 0 2.5 6 1;
+hold;
+square_pocket -2.879 40.085 0 2.5 6 1;
+hold;
+square_pocket 0.621 40.085 0 2.5 6 1;
+hold;
+square_pocket 4.121 40.085 0 2.5 6 1;
+spindle off;
+
+# LED HOLES;
+set plungerate 1;
+goto -9.879 40.085 5;
+spindle on;
+hold;
+drill -9.879 40.085 -1 4.5;
+hold;
+drill -6.379 40.085 -1 4.5;
+hold;
+drill -2.879 40.085 -1 4.5;
+hold;
+drill 0.621 40.085 -1 4.5;
+hold;
+drill 4.121 40.085 -1 4.5;
+spindle off;
+
+goto 0 0 5;
