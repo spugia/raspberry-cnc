@@ -1,22 +1,15 @@
 set unittype mm;
 
-# FEED SETTINGS;
-set feedrate 190;
-set plungerate 25;
+toolchange /home/pi/raspberry-cnc/tools/FLATMILLS/3MMX12MM_2F_FLATMILL.tool;
+set feedrate 100;
+set plungerate 10;
 set stepdown 1.0;
-set stepover 50;
-
-# TOOL SETTINGS;
-set tooltype flatmill;
-set cuttingdiameter 3;
-set shankdiameter 3;
-set cuttinglength 12;
-set toollength 44;
+set stepover 75;
 
 # Boring;
 hold;
 spindle on;
 
-bore 0 0 0 6 1;
+bore 0 0 0 6 3;
 
 spindle off;

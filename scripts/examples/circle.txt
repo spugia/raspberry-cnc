@@ -1,16 +1,12 @@
 set unittype mm;
 
-toolchange /home/pi/raspberry-cnc/tools/18INX38IN_4F_FLATMILL.tool;
-
-set feedrate 50;
-set plungerate 30;
-set stepdown 0.5;
-set stepover 50;
-
-spindle on;
+toolchange /home/pi/raspberry-cnc/tools/FLATMILLS/3MMX12MM_2F_FLATMILL.tool;
+set feedrate 200;
+set plungerate 25;
+set stepdown 1.0;
+set stepover 75;
 
 hold;
-
-circular_pocket 0 0 0 0 5 1;
-
+spindle on;
+circular_pocket 0 0 5 0 5 1;
 spindle off;

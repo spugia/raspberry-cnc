@@ -1,0 +1,32 @@
+set unittype mm;
+
+# TOOL CHANGE - ZERO TO TOP FACE;
+spindle off;
+goto 0 0 5;
+toolchange /home/pi/raspberry-cnc/tools/FLATMILLS/18INX38IN_4F_FLATMILL.tool;
+set feedrate 300;
+set plungerate 25;
+set stepdown 0.50;
+set stepover 50;
+
+# TOP FACE;
+hold;
+spindle on;
+
+# face            0.00  0.0000  0.00 40.00 26.000 3.0;
+# square_pocket   0.00 -6.3075 -3.00 41.35 15.675 1.5;
+# square_pocket   0.00 -6.3075 -4.50 12.50 15.675 8.5;
+# drill         -14.50  3.4700 -3.00 10.00;
+# drill          14.50  3.4700 -3.00 10.00;
+
+# groove 0 0 -3 -19.0875 -12.5575 -19.0875 4.627564 -11.157564 12.5575 19.0875 12.5575 19.0875 -12.5575 -19.0875 -12.5575 10;
+
+# FLIP SIDES;
+spindle off;
+hold;
+spindle on;
+face 0 0 0 40 26 2.5;
+
+# RETURN TO SAFE POINT;
+spindle off;
+goto 0 0 5;

@@ -1,0 +1,115 @@
+set unittype mm;
+
+# TOOL CHANGE;
+spindle off;
+goto 0 0 5;
+toolchange /home/pi/raspberry-cnc/tools/FLATMILLS/18INX38IN_4F_FLATMILL.tool;
+set feedrate 200;
+set plungerate 10;
+set stepdown 1.0;
+set stepover 50;
+
+# ZERO TO SACRIFICIAL PLATE!;
+hold;
+delta 0 0 16.35;
+set z 0;
+goto 0 0 5;
+spindle on;
+
+# Facing;
+face 0 0 0 55 45 2.35;
+
+# Vacuum Chamber;
+square_pocket 0 0 -2.35 15.5 15.5 45 50 3;
+
+# Vents;
+groove 0 0 -5.35 -9.3375 6.1625 -9.3375 9.3375 9.3375 9.3375 9.3375 6.1625 7.5;
+groove 0 0 -5.35 -9.3375 -6.1625 -9.3375 -9.3375 9.3375 -9.3375 9.3375 -6.1625 7.5;
+
+# TOOL CHANGE;
+spindle off;
+goto 0 0 5;
+toolchange /home/pi/raspberry-cnc/tools/FLATMILLS/1MMX3MM_2F_FLATMILL.tool;
+set feedrate 100;
+set plungerate 10;
+set stepdown 0.5;
+set stepover 25;
+
+# ZERO TO SACRIFICIAL PLATE!;
+hold;
+delta 0 0 16.35;
+set z 0;
+goto 0 0 5;
+spindle on;
+
+# Chip pocket;
+square_pocket 0 0 -2.35 10.5 10.5 1;
+square_pocket 0 6.5 -2.35 4 4.5 3;
+
+# Chip o-ring;
+circular_pocket 0 0 -3.35 2 3 0.8;
+
+# Pilot holes;
+drill 0 0 -3.35 3;
+drill -15 15 -5.35 3;
+drill 15 15 -5.35 3;
+drill 15 -15 -5.35 3;
+drill -15 -15 -5.35 3;
+
+# Main o-ring groove;
+circular_pocket 0 0 -5.35 16.25 17.75 1.2;
+
+# TOOL CHANGE;
+spindle off;
+goto 0 0 5;
+toolchange /home/pi/raspberry-cnc/tools/DRILLS/2MMX20MM_2F_DRILL.tool;
+set plungerate 75;
+
+# ZERO TO SACRIFICIAL PLATE!;
+hold;
+delta 0 0 16.35;
+set z 0;
+goto 0 0 5;
+spindle on;
+
+# Assembly screws;
+drill -15 15 -5.35 9;
+drill 15 15 -5.35 9;
+drill 15 -15 -5.35 9;
+drill -15 -15 -5.35 9;
+
+# TOOL CHANGE;
+spindle off;
+goto 0 0 5;
+toolchange /home/pi/raspberry-cnc/tools/DRILLS/015MMX15MM_2F_DRILL.tool;
+set plungerate 50;
+
+# ZERO TO SACRIFICIAL PLATE!;
+hold;
+delta 0 0 16.35;
+set z 0;
+goto 0 0 5;
+spindle on;
+
+# Feed port;
+drill 0 0 -3.35 8;
+
+# TOOL CHANGE;
+spindle off;
+goto 0 0 5;
+toolchange /home/pi/raspberry-cnc/tools/FLATMILLS/18INX38IN_4F_FLATMILL.tool;
+set feedrate 200;
+set plungerate 10;
+set stepdown 1.0;
+set stepover 50;
+
+# ZERO TO SACRIFICIAL PLATE!;
+hold;
+delta 0 0 16.35;
+set z 0;
+goto 0 0 5;
+spindle on;
+
+# Cutout;
+cutout -5.35 -20.5 -20.5 20.5 20.5 6.5 6.5 6.5 6.5 11.05;
+spindle off;

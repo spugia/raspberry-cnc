@@ -1,0 +1,35 @@
+set unittype mm;
+
+# TOOL CHANGE - ZERO TO TOP FACE;
+spindle off;
+goto 0 0 5;
+toolchange /home/pi/raspberry-cnc/tools/FLATMILLS/2MMX8MM_2F_FLATMILL.tool;
+set feedrate 50;
+set plungerate 1;
+set stepdown 0.15;
+set stepover 50;
+
+hold;
+spindle on;
+skip;
+square_pocket   0 0  0 0 0 7 7 1;
+skip;
+circular_pocket 0 0 -1 0 2 8;
+
+# TOOL CHANGE - ZERO TO TOP FACE;
+spindle off;
+goto 0 0 5;
+toolchange /home/pi/raspberry-cnc/tools/DRILLS/015MMX15MM_2F_DRILL.tool;
+set feedrate 150;
+set plungerate 1;
+set stepdown 0.15;
+set stepover 50;
+
+hold;
+spindle on;
+drill 0 0 -9 3;
+
+# FINISHED;
+spindle off;
+goto 0 0 5;
+

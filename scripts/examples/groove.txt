@@ -1,0 +1,11 @@
+set unittype mm;
+
+toolchange /home/pi/raspberry-cnc/tools/FLATMILLS/1MMX3MM_2F_FLATMILL.tool;
+set feedrate 100;
+set plungerate 10;
+set stepdown 0.5;
+set stepover 25;
+
+skip;
+groove 0 0 -5.35 -9.3375 6.1625 -9.3375 9.3375 9.3375 9.3375 9.3375 6.1625 7.5;
+groove 0 0 -5.35 -9.3375 -6.1625 -9.3375 -9.3375 9.3375 -9.3375 9.3375 -6.1625 7.5;

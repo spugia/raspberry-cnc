@@ -1,0 +1,62 @@
+set unittype mm;
+
+# TOOL CHANGE - ZERO TO TOP FACE;
+spindle off;
+goto 0 0 5;
+toolchange /home/pi/raspberry-cnc/tools/FLATMILLS/18INX38IN_4F_FLATMILL.tool;
+set feedrate 200;
+set plungerate 1;
+set stepdown 0.15;
+set stepover 50;
+
+# hold;
+# spindle on;
+# square_pocket 0.00 0.00  0.00 59.00 11.50 1.00;
+# square_pocket 0.00 0.00 -1.00 55.00  7.50 3.00;
+# square_pocket 1.50 0.00 -4.00 52.00  7.50 7.00;
+
+# TOOL CHANGE - ZERO TO TOP FACE;
+spindle off;
+goto 0 0 5;
+toolchange /home/pi/raspberry-cnc/tools/FLATMILLS/2MMX8MM_2F_FLATMILL.tool;
+set feedrate 50;
+set plungerate 1;
+set stepdown 0.15;
+set stepover 50;
+
+hold;
+spindle on;
+# cutout 0.00 -30.00 -6.25 30.00 6.25 4.0875 4.0875 4.0875 4.0875 2.00;
+# drill -32.25 -6.00 0.00 8.00;
+# drill -32.25  6.00 0.00 8.00;
+# drill  32.25  6.00 0.00 8.00;
+# drill  32.25 -6.00 0.00 8.00;
+
+# TOOL CHANGE - ZERO TO TOP FACE;
+spindle off;
+goto 0 0 5;
+toolchange /home/pi/raspberry-cnc/tools/CHAMFERS/18IN_90DEG_2F_CHAMFER.tool;
+set feedrate 50;
+set stepdown 0.2;
+set stepover 50;
+
+hold;
+spindle on;
+# cutout -1 -27.1625 -3.4125 27.1625 3.4125 1.25 1.25 1.25 1.25 1.0875;
+
+# TOOL CHANGE - ZERO TO TOP FACE;
+spindle off;
+goto 0 0 5;
+toolchange /home/pi/raspberry-cnc/tools/FLATMILLS/18INX38IN_4F_FLATMILL.tool;
+set feedrate 200;
+set plungerate 5;
+set stepdown 0.15;
+set stepover 50;
+
+hold;
+spindle on;
+cutout 0.00 -36.5875 -10.3375 36.5875 10.3375 0 0 0 0 15.50;
+
+# FINISHED;
+spindle off;
+goto 0 0 5;

@@ -1,0 +1,30 @@
+set unittype mm;
+
+# TOOL CHANGE;
+spindle off;
+goto 0 0 5;
+toolchange /home/pi/raspberry-cnc/tools/FLATMILLS/18INX38IN_4F_FLATMILL.tool;
+set feedrate 200;
+set plungerate 5;
+set stepdown 0.1;
+set stepover 50;
+
+spindle on;
+hold;
+groove 0 0 0 0 0 110 0 16;
+spindle off;
+
+spindle on;
+hold;
+face -3 0 0 110 20 0.6;
+spindle off;
+
+spindle on;
+hold;
+groove 0 0 -0.6 -36.5875 -10 -36.5875 10 15.5;
+spindle off;
+
+spindle on;
+hold;
+groove 0 0 -0.6 36.5875 -10 36.5875 10 15.5;
+spindle off;

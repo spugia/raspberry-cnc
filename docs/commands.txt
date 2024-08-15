@@ -1,0 +1,29 @@
+exit
+pause - (press space during action)
+terminate - (pressure esc during action)
+
+get
+set
+
+exe
+	hold
+	continue
+	skip
+	stop
+	toolchange
+
+spindle on/off
+
+delta X Y Z *F*
+goto X Y Z *F*
+
+face x0 y0 z0 Lx Ly h
+square_pocket x0 y0 z0 *Lxi* *Lyi* Lxo Lyo h
+bore x0 y0 z0 r h
+circular_pocket
+drill x0 y0 z0 h
+cutout
+groove x0 y0 z0 x1 y1. . . xn yn h
+
+*fillet
+*engrave* (WIP)

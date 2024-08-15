@@ -1,0 +1,17 @@
+set unittype mm;
+
+# TOOL CHANGE - 1/8 IN EM;
+
+# Sensor PCB Pocket;
+
+# Insert Holes;
+
+# Sensor Hole;
+
+# TOOL CHANGE - 3.5 MM DB
+
+# Sensor Reem;
+
+# TOOL CHANGE - 1.5 MM DB
+
+# Fluid Port;

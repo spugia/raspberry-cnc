@@ -1,0 +1,39 @@
+set unittype mm;
+
+# TOOL CHANGE - ZERO TO TOP FACE;
+spindle off;
+goto 0 0 5;
+toolchange /home/pi/raspberry-cnc/tools/FLATMILLS/3MMX12MM_2F_FLATMILL.tool;
+set feedrate 300;
+set plungerate 25;
+set stepdown 0.50;
+set stepover 50;
+
+# TOP FACE;
+hold;
+spindle on;
+
+# face            0.00   0.00  0.00 46.00 36.00 2.0;
+
+# square_pocket   0.00  1.75 -2.00 0.00 0.00 23.00 16.50  3.50;
+# square_pocket   0.00  0.00 -2.00           46.00 9.00   5.75;
+# square_pocket  18.80  0.00 -2.00           10.00 12.00 12.00;
+# square_pocket -18.80  0.00 -2.00           10.00 12.00 12.00;
+# square_pocket   1.97 10.20 -2.00           14.82 17.60 12.00;
+
+# drill          14.80 -10.00 -2.00 8.00;
+# drill          14.80  10.00 -2.00 8.00;
+# drill         -14.80  10.00 -2.00 8.00;
+# drill         -14.80 -10.00 -2.00 8.00;
+
+# cutout         -2.00 -21.30 -16.50 21.30 16.80 0.00 0.00 0.00 0.00 12.00;
+
+# FLIP SIDES;
+spindle off;
+hold;
+spindle on;
+face 0.00 0.00 0.00 50.00 38.00 1;
+
+# RETURN TO SAFE POINT;
+spindle off;
+goto 0 0 5;

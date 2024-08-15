@@ -1,0 +1,15 @@
+set unittype mm;
+
+# TOOL CHANGE;
+goto 0 0 5;
+toolchange /home/pi/raspberry-cnc/tools/DRILLS/2MMX20MM_2F_DRILL.tool;
+set plungerate 100;
+
+# SCREW HOLES;
+spindle on;
+hold;
+drill -15 15 9 9;
+drill 15 15 9 9;
+drill 15 -15 9 9;
+drill -15 -15 9 9;
+spindle off;
