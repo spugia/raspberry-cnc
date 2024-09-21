@@ -1,26 +1,31 @@
 set unittype mm;
 
 # TOOL CHANGE - ZERO TO TOP FACE;
-spindle off;
 goto 0 0 5;
-toolchange /home/pi/raspberry-cnc/tools/FLATMILLS/18INX38IN_4F_FLATMILL.tool;
-set feedrate 300;
-set plungerate 1;
-set stepdown 0.125;
-set stepover 60;
+toolchange /home/pi/raspberry-cnc/tools/FLATMILLS/10MMX30MM_4F_FLATMILL.tool;
 
-# SIDE PROFILE;
-spindle on;
+# TURN ON SPINDLE!!!;
 hold;
 
-# face            0.00 0.00  0.00 106.35 31.96  0.50;
-# square_pocket   0.00 0.00 -9.87  68.00 31.96  0.63;
-# square_pocket -48.00 0.00 -0.50   8.00 31.96 20.75;
-# square_pocket  48.00 0.00 -0.50   8.00 31.96 20.75;
+# Face;
+set stepover 30;
+set feedrate 75;
+set stepdown 0.75;
 
-# groove 0.00  14.2875 -0.50 -50.00 0.00 50.00 0.00 20.75;
-groove 0.00 -14.2875 -10.50 -50.00 0.00 50.00 0.00 10.75;
+# face 0.00 0.00 -2.00 120.00 40.00 2.00;
 
-# RETURN TO SAFE POINT;
-spindle off;
+# Cutout;
+set stepdown 0.6;
+set stepover 25;
+# face 0.00 0.00 -10.90 67.00 45.00 3.00;
+
+set stepdown 3;
+# groove -29.00 0.00 -4.00 0.00 -20.00 0.00 20.00 10.00;
+groove  29.25 0.00 -4.00 0.00 -20.00 0.00 20.00 10.00;
+
+set stepdown 10;
+set stepover 75;
+set feedrate 300;
+square_pocket 0.00 0.00 -4.00 68.00 35.00 10.00;
+
 goto 0 0 5;

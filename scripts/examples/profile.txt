@@ -1,0 +1,8 @@
+set unittype mm;
+
+toolchange tools/FLATMILLS/14INX1_18IN_4F_FLATMILL.tool;
+set feedrate 250;
+set stepover 50;
+set stepdown 1;
+
+profile scripts/examples/test_profile.prof 6.35 2;

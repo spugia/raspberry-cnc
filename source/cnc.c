@@ -50,23 +50,29 @@ int main() {
   //.. command loop
   bool hold = false;
   bool exe  = false;
-  bool skip = false;
-  
-  int l, L, n, dn, v, N, A, T;
 
+  uint32_t skip = 0;
+  
+  int l, L, n, dn, v, N, A, T, V;
+  
   Action ** s;
 
   char * unitcmd;
     
   char ** lines;
   char ** tlines;
+
+  V = 0;
+  
+  char ** vn  = malloc(sizeof(char *));
+  double * vv = malloc(sizeof(double));
   
   for (;;) {
     
     //.. recieving line
     char * line;
 
-    if (hold || !exe)      { line = read_line(); }
+         if (hold || !exe) { line = read_line(); }
     else if (exe && n < N) { line = lines[n++];  }
     else if (exe) {
 
@@ -81,47 +87,33 @@ int main() {
       continue;
     }
 
-    if (exe && skip) { skip = false; continue; }
+    //.. bypass for skip
+    if (exe && skip > 0) { skip--; continue; }
     
-    //.. parsing line
     char ** segs = split_line(line, ' ', &L);
+
+    //.. parse exit
+    if (!exe && !hold && parse_exit(segs, L)) { for (l = 0 ; l < L ; l++) { free(segs[l]); } free(segs); free(line); break; }
     
-    if (!exe && !hold && parse_exit(segs, L)) {
+    //.. parse execute
+    else if (!exe && (lines = parse_exe(segs, L, &N)) != NULL) { exe = true; n = 0; }
+    
+    //.. parse hold
+    else if (!hold && exe && parse_hold(segs, L)) { hold = true; }
 
-      //.. exit
-      free(segs);
-      free(line);
-      
-      break;
+    //.. parse stop
+    else if (hold && parse_stop(segs, L)) { free(lines); lines = NULL; exe = hold = false; }
 
-    } else if (!hold && exe && parse_hold(segs, L)) {
+    //.. parse continue
+    else if (hold && parse_cont(segs, L)) { hold = false; }
+    
+    //.. parse skip
+    else if (exe && (skip = parse_skip(segs, L, vn, vv, V)) > 0) { hold = false; }
 
-      //.. hold
-      hold = true;
-            
-    } else if (hold && parse_stop(segs, L)) {
+    //.. parse tool change
+    else if (exe && (tlines = parse_toolchange(segs, L, &T)) != NULL) {
 
-      //.. stop
-      free(lines);
-      lines = NULL;
-
-      exe = false;
-      hold = false;
-      
-    } else if (hold && parse_cont(segs, L)) {
-
-      //.. continue
-      hold = false;
-
-    } else if (exe && parse_skip(segs, L)) {
-
-      //.. skip
-      hold = false;
-      skip = true;
-
-    } else if (exe && (tlines = parse_toolchange(cnc, segs, L, &T)) != NULL) {
-      
-      //.. tool change
+      //.. set units
       unitcmd = malloc(sizeof(char) * 256);
       sprintf(unitcmd, "set unittype %s", unittype_name(cnc -> unit));
 
@@ -146,37 +138,50 @@ int main() {
 
       free(tlines);
       tlines = NULL;
-      
-    } else if (parse_get(cnc, segs, L)) {
-    } else if (parse_set(cnc, segs, L)) {
+    }
 
-      //.. set
+    //.. parse get
+    else if (parse_get(cnc, segs, L)) { }
+
+    //.. parse set
+    else if (parse_set(cnc, segs, L, vn, vv, V)) {
+
       write_config(cnc);
       write_position(cnc);
       write_material(cnc);
       write_tool(cnc);
     }
-    else if (exe && parse_comment(cnc, segs, L))                             { }
-    else if ((v = parse_spindle(cnc, segs, L)) != -1)                        { gpioWrite(SPND, v); }
-    else if ((s = parse_goto(cnc, segs, L)) != NULL)                         { if (execute_sequence(&targ, s, 1) && exe) { hold = true; } }
-    else if ((s = parse_delta(cnc, segs, L)) != NULL)                        { if (execute_sequence(&targ, s, 1) && exe) { hold = true; } }
-    else if (!hold && (s = parse_face(cnc, segs, L, &A)) != NULL)            { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
-    else if (!hold && (s = parse_square_pocket(cnc, segs, L, &A)) != NULL)   { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
-    else if (!hold && (s = parse_circular_pocket(cnc, segs, L, &A)) != NULL) { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
-    else if (!hold && (s = parse_cutout(cnc, segs, L, &A)) != NULL)          { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
-    else if (!hold && (s = parse_drill(cnc, segs, L, &A)) != NULL)           { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
-    else if (!hold && (s = parse_bore(cnc, segs, L, &A)) != NULL)            { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
-    else if (!hold && (s = parse_fillet(cnc, segs, L, &A)) != NULL)          { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
-    else if (!hold && (s = parse_groove(cnc, segs, L, &A)) != NULL)          { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
-    else if (!hold && (s = parse_engrave(cnc, segs, L, &A)) != NULL)         { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
-    else if (!exe && (lines = parse_exe(cnc, segs, L, &N)) != NULL) {
-      
-      exe = true;
-      n = 0;
-      
-    } else {
 
-      //.. invalid
+    //.. parse comment
+    else if (exe && parse_comment(segs, L)) { }
+
+    //.. parse variable
+    else if (parse_var(&vn, &vv, &V, segs, L)) { }
+
+    //.. parse divide
+    else if (parse_div(vn, vv, V, segs, L)) { }
+
+    //.. parse multiply
+    else if (parse_mult(vn, vv, V, segs, L)) { }
+    
+    //.. clear variables
+    else if (parse_clear_var(&vn, &vv, &V, segs, L)) { }
+    
+    //.. parse CAM commands
+    else if (         (s =            parse_goto(cnc, segs, L, vn, vv, V))     != NULL) { if (execute_sequence(&targ, s, 1) && exe) { hold = true; } }
+    else if (         (s =           parse_delta(cnc, segs, L, vn, vv, V))     != NULL) { if (execute_sequence(&targ, s, 1) && exe) { hold = true; } }
+    else if (         (s =           parse_curve(cnc, segs, L, vn, vv, V))     != NULL) { if (execute_sequence(&targ, s, 1) && exe) { hold = true; } }
+    else if (!hold && (s =   parse_square_pocket(cnc, segs, L, vn, vv, V, &A)) != NULL) { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
+    else if (!hold && (s =           parse_drill(cnc, segs, L, vn, vv, V, &A)) != NULL) { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
+    else if (!hold && (s =            parse_bore(cnc, segs, L, vn, vv, V, &A)) != NULL) { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
+    else if (!hold && (s = parse_circular_pocket(cnc, segs, L, vn, vv, V, &A)) != NULL) { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
+    else if (!hold && (s =         parse_engrave(cnc, segs, L, vn, vv, V, &A)) != NULL) { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
+    else if (!hold && (s =  parse_radial_contour(cnc, segs, L, vn, vv, V, &A)) != NULL) { if (execute_sequence(&targ, s, A) && exe) { hold = true; } }
+    else if (!hold && (s =    parse_side_contour(cnc, segs, L, vn, vv, V, &A)) != NULL) { if (execute_sequence(&targ, s, A)) { hold = true; } }
+    
+    //.. invalid command
+    else {
+
       printw("> invalid command or arguments\n");
       refresh();
       
@@ -188,7 +193,9 @@ int main() {
 	exe = false;
       }
     }
-
+    
+    for (l = 0 ; l < L ; l++) { free(segs[l]); }
+ 
     free(segs);
     free(line);
   }
@@ -201,6 +208,11 @@ int main() {
   pthread_join(thread, NULL);
   
   //.. cleanup
+  for (v = 0 ; v < V ; v++) { free(vn[v]); }
+
+  free(vn);
+  free(vv);
+  
   cleanup(cnc);
   
   return 0;
@@ -224,20 +236,21 @@ void initialize(CNC * cnc) {
   gpioSetMode(STP_Y, PI_INPUT);
   gpioSetMode(STP_Z, PI_INPUT);
   
-  gpioSetMode(SPND, PI_OUTPUT);
-  
   //.. setting pin states
   gpioWrite(DIR_X, 0);
   gpioWrite(DIR_Y, 0);
   gpioWrite(DIR_Z, 0);
 
-  gpioWrite(SPND, 1);
-  
+  //.. calculating run-out
+  cnc -> ROX = (uint32_t) round(SLOP_X * RPI_X * SPR_X);
+  cnc -> ROY = (uint32_t) round(SLOP_Y * RPI_Y * SPR_Y);
+  cnc -> ROZ = (uint32_t) round(SLOP_Z * RPI_Z * SPR_Z);
+
   //.. loading machine state
-    read_config(cnc);
-  read_position(cnc);
-  read_material(cnc);
-      read_tool(cnc);
+     read_config(cnc);
+   read_position(cnc);
+   read_material(cnc);
+       read_tool(cnc);
 
     write_config(cnc);
   write_position(cnc);
@@ -255,8 +268,6 @@ void cleanup(CNC * cnc) {
   gpioWrite(DIR_X, 0);
   gpioWrite(DIR_Y, 0);
   gpioWrite(DIR_Z, 0);
-
-  gpioWrite(SPND, 1);
 
   //.. freeing allocated memory
   if (cnc != NULL) { free(cnc); }
@@ -289,6 +300,8 @@ void write_material(CNC * cnc) {
 void write_position(CNC * cnc) {
 
   FILE * file = fopen(PPATH, "w+");
-  fprintf(file, "%.8f\n%.8f\n%.8f\n", cnc -> X, cnc -> Y, cnc -> Z);
+  fprintf(file, "%.8f\n%.8f\n%.8f\n%u\n%u\n%u\n%.8f\n%.8f\n%.8f\n", cnc -> X, cnc -> Y, cnc -> Z,
+	                                                            cnc -> rox, cnc -> roy, cnc -> roz,
+	                                                            cnc -> X0, cnc -> Y0, cnc -> Z0);
   fclose(file);
 }

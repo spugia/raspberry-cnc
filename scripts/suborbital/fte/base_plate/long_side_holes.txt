@@ -1,0 +1,47 @@
+set unittype mm;
+
+goto 0 0 5;
+
+# Center hole;
+goto 0 0  0  150;
+goto 0 0 -5  5;
+goto 0 0  0;
+goto 0 0 -5;
+goto 0 0 -10 5;
+goto 0 0  0;
+goto 0 0 -10;
+goto 0 0 -15 5;
+goto 0 0  0;
+goto 0 0 -15;
+goto 0 0 -20 5;
+goto 0 0  5;
+
+# Left hole;
+goto -68.4 0 5;
+goto -68.4 0  0  150;
+goto -68.4 0 -5  5;
+goto -68.4 0  0;
+goto -68.4 0 -5;
+goto -68.4 0 -10 5;
+goto -68.4 0  0;
+goto -68.4 0 -10;
+goto -68.4 0 -15 5;
+goto -68.4 0  0;
+goto -68.4 0 -15;
+goto -68.4 0 -20 5;
+goto -68.4 0  5;
+
+# Right hole;
+goto 68.4 0 5;
+goto 68.4 0  0  150;
+goto 68.4 0 -5  5;
+goto 68.4 0  0;
+goto 68.4 0 -5;
+goto 68.4 0 -10 5;
+goto 68.4 0  0;
+goto 68.4 0 -10;
+goto 68.4 0 -15 5;
+goto 68.4 0  0;
+goto 68.4 0 -15;
+goto 68.4 0 -20 5;
+goto 68.4 0  5;

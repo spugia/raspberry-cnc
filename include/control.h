@@ -13,36 +13,42 @@
 #define STP_Y 27
 #define STP_Z 22
 
-#define SPND 26
+#define RELAY 26
+
+//.. runout [in]
+#define SLOP_X 0.0150F
+#define SLOP_Y 0.0240F
+#define SLOP_Z 0.0000F
 
 //.. screw size [thread / in]
 #define RPI_X 10.0F
 #define RPI_Y 10.0F
-#define RPI_Z 25.4F
+#define RPI_Z 5.08F
 
 //.. steps-per-revolution
 #define SPR_X 800.0F
 #define SPR_Y 800.0F
-#define SPR_Z 400.0F
+#define SPR_Z 800.0F
 
 //.. feed acceleration [in/min/in]
-#define FAR  75.0F
+#define FAR  300.0F
 #define FMIN 1.0F
+#define FRUN 2.0F
 
 //.. NEMA23 pulsing frequency (limited by pi)
 #define SPS_23 250000
 
 // ENUMERATORS
 
-enum action_type { ACT_None = 0, Linear = 1, Curve = 2 };
-enum    dir_type { DIR_None = 0, DIR_CW = 1, DIR_CCW = 2 };
+enum ActionType { ACT_None = 0, Linear = 1, Curve = 2 };
+enum    DirType { DIR_None = 0, DIR_CW = 1, DIR_CCW = 2 };
 
 // STRUCTURES
 
 typedef struct Action {
 
-  enum action_type type;
-  enum dir_type dir;
+  enum ActionType type;
+  enum    DirType dir;
   
   double X;  //.. [in]
   double Y;  //.. [in]
@@ -81,16 +87,15 @@ double                 F_max(double, double, double);
 double               F_accel(double, double, double, double);
 
 Action *       create_linear(double, double, double, double);
-Action *        create_curve(double, double, double, double, double, enum dir_type, double);
+Action *        create_curve(double, double, double, double, double, enum DirType, double);
 
-void          compile_linear(Action *, double, double, double, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned long long **, int *);
-void           compile_curve(Action *, double, double, double, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned long long **, int *);
+void          compile_linear(Action *, double, double, double, int32_t, int32_t, int32_t, int32_t, int32_t, int32_t, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned long long **, int *);
+void           compile_curve(Action *, double, double, double, int32_t, int32_t, int32_t, int32_t, int32_t, int32_t, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned int **, unsigned long long **, int *);
 int **          render_curve(double, double, double, unsigned long long *);
 void           render_points(int, int, double, double, int ***, unsigned long long *);
-void            order_points(int ***, unsigned long long *, double, double, enum dir_type);
-bool          points_ordered(double, double, double, double, enum dir_type);
-bool          between_angles(double, double, double, enum dir_type);
-double            arc_length(double, double, double, enum dir_type);
+void            order_points(int ***, unsigned long long *, double, double, enum DirType);
+bool          between_angles(double, double, double, enum DirType);
+double            arc_length(double, double, double, enum DirType);
 
 void             sort_action(unsigned long long *, unsigned int *, unsigned int *, unsigned int *, unsigned int *, unsigned int *, unsigned int *, int);
 void           splice_action(unsigned long long *, struct timespec **, int);

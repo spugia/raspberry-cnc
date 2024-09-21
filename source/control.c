@@ -15,13 +15,21 @@ double FXY_max(void) {
 
 double F_max(double dx, double dy, double dz) {
 
+  if (isnan(dx)) { dx = 0; }
+  if (isnan(dy)) { dy = 0; }
+  if (isnan(dz)) { dz = 0; }
+  
   double tx = fabs(dx) / FX_max();
   double ty = fabs(dy) / FY_max();
   double tz = fabs(dz) / FZ_max();
 
-  if (tx >= ty && tx >= tz) { return FX_max(); }
-  if (ty >= tx && ty >= tz) { return FY_max(); }
-  if (tz >= tx && tz >= ty) { return FZ_max(); }
+  if (lfeq(dx, 0)) { tx = 0; }
+  if (lfeq(dy, 0)) { ty = 0; }
+  if (lfeq(dz, 0)) { tz = 0; }
+  
+  if (!lfeq(dx, 0) && tx >= ty && tx >= tz) { return FX_max(); }
+  if (!lfeq(dy, 0) && ty >= tx && ty >= tz) { return FY_max(); }
+  if (!lfeq(dz, 0) && tz >= tx && tz >= ty) { return FZ_max(); }
 
   return FZ_max();
 }
@@ -56,7 +64,7 @@ Action * create_linear(double X, double Y, double Z, double F) {
   return linear;
 }
 
-Action * create_curve(double X, double Y, double Z, double X0, double Y0, enum dir_type dir, double F) {
+Action * create_curve(double X, double Y, double Z, double X0, double Y0, enum DirType dir, double F) {
 
   Action * curve = malloc(sizeof(struct Action));
 
@@ -75,7 +83,7 @@ Action * create_curve(double X, double Y, double Z, double X0, double Y0, enum d
   return curve;
 }
 
-void compile_linear(Action * action, double X, double Y, double Z, unsigned int ** mx, unsigned int ** my, unsigned int ** mz, unsigned int ** nx, unsigned int ** ny, unsigned int ** nz, unsigned long long ** times, int * S) {
+void compile_linear(Action * action, double X, double Y, double Z, int32_t rox, int32_t roy, int32_t roz, int32_t ROX, int32_t ROY, int32_t ROZ, unsigned int ** mx, unsigned int ** my, unsigned int ** mz, unsigned int ** nx, unsigned int ** ny, unsigned int ** nz, unsigned long long ** times, int * S) {
 
   //.. distance along each axis
   double dx = 0;
@@ -87,23 +95,39 @@ void compile_linear(Action * action, double X, double Y, double Z, unsigned int 
   if (!isnan(action -> Z)) { dz = Z - action -> Z; }
 
   //.. feed rate
-  double F_act = action -> F;
-
-  if (isnan(F_act)) { F_act = F_max(dx, dy, dz); }
+  double Fact = action -> F;
+  double Fmax = F_max(dx, dy, dz);
   
+  if (isnan(Fact)) { Fact = Fmax; }
+
   //.. steps along each axis
   int Sx = (int) round(fabs(dx) * RPI_X * SPR_X);
   int Sy = (int) round(fabs(dy) * RPI_Y * SPR_Y);
   int Sz = (int) round(fabs(dz) * RPI_Z * SPR_Z);
 
+  int32_t Rx, Ry, Rz;
+  
   //.. step size in each axis
   double dxs = 1 / (RPI_X * SPR_X);
   double dys = 1 / (RPI_Y * SPR_Y);
   double dzs = 1 / (RPI_Z * SPR_Z);
   
   //.. allocating memory
-  (*S) = Sx + Sy + Sz;
+  if (dx > 0) { Rx = rox;       }
+  else        { Rx = ROX - rox; }
 
+  if (dy > 0) { Ry = roy;       }
+  else        { Ry = ROY - roy; }
+
+  if (dz > 0) { Rz = roz;       }
+  else        { Rz = ROZ - roz; }
+  
+  if (lfeq(dx, 0)) { Rx = 0; }
+  if (lfeq(dy, 0)) { Ry = 0; }
+  if (lfeq(dz, 0)) { Rz = 0; }
+
+  (*S) = Sx + Sy + Sz + Rx + Ry + Rz;
+  
   *mx     = malloc(sizeof(unsigned int)       * (*S));
   *my     = malloc(sizeof(unsigned int)       * (*S));
   *mz     = malloc(sizeof(unsigned int)       * (*S));
@@ -121,41 +145,81 @@ void compile_linear(Action * action, double X, double Y, double Z, unsigned int 
   *nz = (unsigned int *) memset(*nz, 0, sizeof(unsigned int) * (*S));
 
   (*S) = 0;
-  
-  //.. compiling x-axis steps
-  (*S) = Sx;
 
-  double x = 0;
-  double y = 0;
-  double z = 0;
+  double x  = 0;
+  double y  = 0;
+  double z  = 0;
   double ll = 0;
-  double l = 0;
-  double L = sqrt(dx * dx + dy * dy + dz * dz);
+  double l  = 0;
+  double L  = sqrt(dx * dx + dy * dy + dz * dz);
   double F;
   
   bool duplicate;
-  unsigned long long t = 0;
+  unsigned long long t;
+  unsigned long long tr = 0;
   
-  for (unsigned long long s = 0 ; s < Sx ; ++s) {
+  //.. x run-out  
+  for (int32_t s = 0 ; s < Rx ; s++) {
+
+    tr += (unsigned long long) round(dxs / FRUN * 60 * 1000000000);
+
+    (*times)[*S] = tr;
+    (*mx)[*S]    = PUL_X;
+    (*nx)[*S]    = dx > 0;
+
+    (*S)++;
+  }
+  
+  //.. y run-out
+  
+  for (int32_t s = 0 ; s < Ry ; s++) {
+
+    tr += (unsigned long long) round(dys / FRUN * 60 * 1000000000);
+    
+    (*times)[*S] = tr;
+    (*my)[*S]    = PUL_Y;
+    (*ny)[*S]    = dy > 0;
+
+    (*S)++;
+  }
+
+  //.. z run-out  
+  for (int32_t s = 0 ; s < Rz ; s++) {
+
+    tr += (unsigned long long) round(dzs / FRUN * 60 * 1000000000);
+    
+    (*times)[*S] = tr;
+    (*mz)[*S]    = PUL_Z;
+    (*nz)[*S]    = dz > 0;
+
+    (*S)++;
+  }
+
+  //.. compiling x-axis steps
+  t = tr;
+  
+  for (unsigned long long s = 0 ; s < Sx ; s++) {
 
     x += dxs;
     y = x * fabs(dy / dx);
     z = x * fabs(dz / dx);
 
     l = sqrt(x * x + y * y + z * z);
-    F = F_accel(l, L, FAR, F_act);
+    F = F_accel(l, L, FAR, Fact);
 
     t += (unsigned long long) round((l - ll) / F * 60 * 1000000000);
     
-    (*times)[s] = t;
-    (*mx)[s]    = PUL_X;
-    (*nx)[s]    = dx > 0;
+    (*times)[*S] = t;
+    (*mx)[*S]    = PUL_X;
+    (*nx)[*S]    = dx > 0;
 
+    (*S)++;
+    
     ll = l;
   }
 
   //.. compiling y-axis steps
-  t  = 0;
+  t  = tr;
   y  = 0;
   ll = 0;
   
@@ -166,7 +230,7 @@ void compile_linear(Action * action, double X, double Y, double Z, unsigned int 
     z = y * fabs(dz / dy);
 
     l = sqrt(x * x + y * y + z * z);
-    F = F_accel(l, L, FAR, F_act);
+    F = F_accel(l, L, FAR, Fact);
 
     t += (unsigned long long) round((l - ll) / F * 60 * 1000000000);
     
@@ -197,7 +261,7 @@ void compile_linear(Action * action, double X, double Y, double Z, unsigned int 
   }
 
   //.. compiling z-axis steps
-  t  = 0;
+  t  = tr;
   z  = 0;
   ll = 0;
 
@@ -208,7 +272,7 @@ void compile_linear(Action * action, double X, double Y, double Z, unsigned int 
     y = z * fabs(dy / dz);
 
     l = sqrt(x * x + y * y + z * z);
-    F = F_accel(l, L, FAR, F_act);
+    F = F_accel(l, L, FAR, Fact);
 
     t += (unsigned long long) round((l - ll) / F * 60 * 1000000000);
     
@@ -248,7 +312,7 @@ void compile_linear(Action * action, double X, double Y, double Z, unsigned int 
   *nz    =       (unsigned int *) realloc(*nz,    sizeof(unsigned int)       * (*S));
 }
 
-void compile_curve(Action * action, double X, double Y, double Z, unsigned int ** mx, unsigned int ** my, unsigned int ** mz, unsigned int ** nx, unsigned int ** ny, unsigned int ** nz, unsigned long long ** times, int * S) {
+void compile_curve(Action * action, double X, double Y, double Z, int32_t rox, int32_t roy, int32_t roz, int32_t ROX, int32_t ROY, int32_t ROZ, unsigned int ** mx, unsigned int ** my, unsigned int ** mz, unsigned int ** nx, unsigned int ** ny, unsigned int ** nz, unsigned long long ** times, int * S) {
 
   //.. step sizes
   double dxs = 1 / (RPI_X * SPR_X);
@@ -272,14 +336,14 @@ void compile_curve(Action * action, double X, double Y, double Z, unsigned int *
   //.. arc length
   double L;
 
-  if (!lfeq(T1, T2)) { L = arc_length(R, T1, T2, action -> dir); }
-  else               { L = 2 * M_PI * R;                         }
-
+  if (lfeq(T1, T2)) { L = 2 * M_PI * R;                         }
+  else              { L = arc_length(R, T1, T2, action -> dir); }
+  
   //.. feed rate
   double F_act = action -> F;
 
   if (isnan(F_act)) { F_act = F_max(L, L, Z - action -> Z); }
-  
+
   //.. render curve
   unsigned long long P;
   int ** points = render_curve(R, dxs, dys, &P);
@@ -287,9 +351,19 @@ void compile_curve(Action * action, double X, double Y, double Z, unsigned int *
   order_points(&points, &P, T1, T2, action -> dir);
 
   //.. allocating data structures
-  unsigned long long zsteps = fabs(Z - action -> Z) / dzs;
+  int32_t Rz;
+  double dz = 0;
+
+  if (!isnan(action -> Z)) { dz = Z - action -> Z; }
   
-  (*S) = 2 * P + zsteps;
+  if (dz > 0) { Rz = roz;       }
+  else        { Rz = ROZ - roz; }
+  
+  if (lfeq(dz, 0)) { Rz = 0; }
+
+  int zsteps = (int) round(fabs(dz) / dzs);
+  
+  (*S) = 2 * P + zsteps + Rz + 2 * ROX + 2 * ROY + ROZ;
   
   if (*S == 0) { (*S) = 1; R = 0; }
   
@@ -311,14 +385,29 @@ void compile_curve(Action * action, double X, double Y, double Z, unsigned int *
   (*S) = 0;
   
   if (R < dxymin) { return; }
-  
-  //.. compiling x-y steps  
-  unsigned long long time = 0;
 
-  int ix, iy;
+  //.. z run-out
+  unsigned long long time = 0;
+  
+  for (int32_t s = 0 ; s < Rz ; s++) {
+
+    time += (unsigned long long) round(dzs / FRUN * 60 * 1000000000);
+    
+    (*times)[*S] = time;
+    (*mz)[*S]    = PUL_Z;
+    (*nz)[*S]    = dz > 0;
+
+    (*S)++;
+  }
+  
+  //.. compiling x-y steps
+  int sx, sy;
+
+  int ix, iy, iz;
   int ixl = points[0][0];
   int iyl = points[0][1];
-
+  int izl = 0;
+  
   double t1, t, F, dl, l = 0;
 
   t1 = atan3(points[0][0], points[0][1]);
@@ -330,6 +419,66 @@ void compile_curve(Action * action, double X, double Y, double Z, unsigned int *
 
     if (ix != ixl || iy != iyl) {
 
+      sx = ix - ixl;
+      sy = iy - iyl;
+
+      //.. runout - x
+      if (sx > 0) {
+
+	for (; rox <= ROX ; rox++) {
+
+	  time += (unsigned long long) round(dxs / FRUN * 60 * 1000000000);
+	  
+	  (*times)[(*S)] = time;
+	  (*mx)[(*S)]    = PUL_X;
+	  (*nx)[(*S)]    = sx < 0;
+
+	  (*S)++;
+	}
+	
+      } else if (sx < 0) {
+
+	for (; rox >= 0 ; rox--) {
+
+	  time += (unsigned long long) round(dxs / FRUN * 60 * 1000000000);
+
+	  (*times)[(*S)] = time;
+	  (*mx)[(*S)]    = PUL_X;
+	  (*nx)[(*S)]    = sx < 0;
+
+	  (*S)++;
+	}
+      }
+
+      //.. runout - y
+      if (sy > 0) {
+
+	for (; roy <= ROY ; roy++) {
+
+	  time += (unsigned long long) round(dys / FRUN * 60 * 1000000000);
+	  
+	  (*times)[(*S)] = time;
+	  (*my)[(*S)]    = PUL_Y;
+	  (*ny)[(*S)]    = sy < 0;
+
+	  (*S)++;
+	}
+	
+      } else if (sy < 0) {
+
+	for (; roy >= 0 ; roy--) {
+
+	  time += (unsigned long long) round(dys / FRUN * 60 * 1000000000);
+
+	  (*times)[(*S)] = time;
+	  (*my)[(*S)]    = PUL_Y;
+	  (*ny)[(*S)]    = sy < 0;
+
+	  (*S)++;
+	}
+      }
+
+      //.. x/y step
       t = atan3(points[p][0], points[p][1]);
       l = arc_length(R, t1, t, action -> dir);
       
@@ -343,56 +492,31 @@ void compile_curve(Action * action, double X, double Y, double Z, unsigned int *
       (*mx)[(*S)]    = PUL_X * (ix != ixl);
       (*my)[(*S)]    = PUL_Y * (iy != iyl);
 
-      (*nx)[(*S)] = (ix - ixl) < 0;
-      (*ny)[(*S)] = (iy - iyl) < 0;
+      (*nx)[(*S)] = sx < 0;
+      (*ny)[(*S)] = sy < 0;
       
       (*S)++;
 
+      //.. z step
+      iz = (int) round(l / L * (double) zsteps);
+
+      if (iz != izl) {
+
+	(*times)[(*S)] = time;
+	(*mz)[(*S)]    = PUL_Z;
+	(*nz)[(*S)]    = dz < 0;
+      }
+      
+      //.. last posotion
       ixl = ix;
       iyl = iy;
+      izl = iz;
     }
     
     free(points[p]);
   }
   
   free(points);
-
-  //.. compiling z-steps
-  unsigned long long s2, dt = 0;
-
-  if (zsteps > 0) { dt = time / zsteps; }
-  
-  time = 0;
-
-  bool duplicate;
-  
-  for (unsigned long long s = 1 ; s <= zsteps ; s++) {
-
-    time += dt;
-    
-    duplicate = false;
-
-    for (s2 = 0 ; s2 < *S ; s2++) {
-
-      if ((*times)[s2] == time) {
-
-        (*mz)[s2] = PUL_Z;
-        (*nz)[s2] = (Z - action -> Z) < 0;
-        
-        duplicate = true;
-        break;
-      }
-    }
-
-    if (!duplicate) {
-
-      (*times)[*S] = time;
-      (*mz)[*S]    = PUL_Z;
-      (*nz)[*S]    = (Z - action -> Z) < 0;
-      
-      (*S)++;
-    }
-  }
 
   //.. resizing data structures
   *times = (unsigned long long *) realloc(*times, sizeof(unsigned long long) * (*S));
@@ -463,8 +587,8 @@ void render_points(int X, int Y, double dx, double dy, int *** points, unsigned 
   }
 }
 
-void order_points(int *** points, unsigned long long * P, double T1, double T2, enum dir_type dir) {
-
+void order_points(int *** points, unsigned long long * P, double T1, double T2, enum DirType dir) {
+  
   double T;
   unsigned int i, j;
 
@@ -516,7 +640,7 @@ void order_points(int *** points, unsigned long long * P, double T1, double T2, 
     
     for (j = 0 ; j < *P - i - 1 ; j++) {
 
-      if (!points_ordered(T1, T2, angles[j], angles[j + 1], dir)) {
+      if (angles[j] > angles[j + 1]) {
 	  
 	//.. swap points
 	x = (*points)[j][0];
@@ -551,18 +675,10 @@ void order_points(int *** points, unsigned long long * P, double T1, double T2, 
   free(angles);
 }
 
-bool points_ordered(double T1, double T2, double t1, double t2, enum dir_type dir) {
-
-  if (dir == DIR_CW  && t1 < t2) { return true; }
-  if (dir == DIR_CCW && t1 > t2) { return true; }
-
-  return false;
-}
-
-bool between_angles(double T1, double T2, double T, enum dir_type dir) {
+bool between_angles(double T1, double T2, double T, enum DirType dir) {
 
   //.. complete circle
-  if (lfeq(T1, T2)) { return true; }
+  if (lfeq(T1, T2) || lfeq(fabs(T2 - T1), 2 * M_PI)) { return true; }
 
   //.. incomplete circle
   if (dir == DIR_CCW) {
@@ -581,7 +697,7 @@ bool between_angles(double T1, double T2, double T, enum dir_type dir) {
   return false;
 }
 
-double arc_length(double R, double T1, double T2, enum dir_type dir) {
+double arc_length(double R, double T1, double T2, enum DirType dir) {
 
   double theta = 0;
 
@@ -704,10 +820,30 @@ void execute_action(CNC * cnc, struct timespec * steps, unsigned int * mx, unsig
     nanosleep(&(steps[s]), NULL);
 
     //.. updating position
-    cnc -> X += (double) (mx[s] > 0) * dx * (nx[s] ? -1 :  1);
-    cnc -> Y += (double) (my[s] > 0) * dy * (ny[s] ? -1 :  1);
-    cnc -> Z += (double) (mz[s] > 0) * dz * (nz[s] ?  1 : -1);
+    if (mx[s] > 0) {
+
+      cnc -> rox += (nx[s] != 0 ? -1 : 1);
+      
+      if      (cnc -> rox < 0)          { cnc -> rox = 0;          cnc -> X -= dx; }
+      else if (cnc -> rox > cnc -> ROX) { cnc -> rox = cnc -> ROX; cnc -> X += dx; } 
+    }
+
+    if (my[s] > 0) {
+
+      cnc -> roy += (ny[s] != 0 ? -1 : 1);  
     
+      if      (cnc -> roy < 0)          { cnc -> roy = 0;          cnc -> Y -= dy; }
+      else if (cnc -> roy > cnc -> ROY) { cnc -> roy = cnc -> ROY; cnc -> Y += dy; }
+    }
+
+    if (mz[s] > 0) {
+
+      cnc -> roz += (nz[s] != 0 ? 1 : -1);
+      
+      if      (cnc -> roz < 0)          { cnc -> roz = 0;          cnc -> Z -= dz; }
+      else if (cnc -> roz > cnc -> ROZ) { cnc -> roz = cnc -> ROZ; cnc -> Z += dz; }
+    }
+      
     //.. hold
     if (*stop)     {              return; }
     while (*pause) { if (*stop) { return; } }
@@ -829,11 +965,11 @@ void * control_thread(void * args) {
       switch (targ -> action -> type) {
 
       case Linear:
-	compile_linear(targ -> action, cnc -> X, cnc -> Y, cnc -> Z, &mx, &my, &mz, &nx, &ny, &nz, &times, &S);
+	compile_linear(targ -> action, cnc -> X, cnc -> Y, cnc -> Z, cnc -> rox, cnc -> roy, cnc -> roz, cnc -> ROX, cnc -> ROY, cnc -> ROZ, &mx, &my, &mz, &nx, &ny, &nz, &times, &S);
 	break;
 
       case Curve:
-	compile_curve(targ -> action, cnc -> X, cnc -> Y, cnc -> Z, &mx, &my, &mz, &nx, &ny, &nz, &times, &S);
+	compile_curve(targ -> action, cnc -> X, cnc -> Y, cnc -> Z, cnc -> rox, cnc -> roy, cnc -> roz, cnc -> ROX, cnc -> ROY, cnc -> ROZ, &mx, &my, &mz, &nx, &ny, &nz, &times, &S);
       	break;
 	
       default: break;

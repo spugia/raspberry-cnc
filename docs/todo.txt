@@ -1,61 +1,79 @@
-BUGS
+SOFTWARE
 
-? fillet does not work with new circle system
-? exe gets stuck when bad command is entered during hold
-? bore kills program
+	BUGS
 
-X square pocket with inner dimensions and zero offset not working
-X exe fails when you pass a directory
-X ramp not working for linear diagonal
+	? profile arc offset does not account for acute angles
+	? exe gets stuck when bad command is entered during hold
+	? goto with nan produces the wrong feed rate
 
-REFACTORING
+	X CCW curve flips the arc horizontally (propagate fix throughout)
+	X square pocket with inner dimensions and zero offset not working
+	X exe fails when you pass a directory
+	X ramp not working for linear diagonal
+	X fillet does not work with new circle system
+	X bore kills program
 
-- standardized all data types to <stdint.h>
-- Point2 and Point3
+	REFACTORING
 
-SOFTWARE FEATURES
+	- standardized all data types to <stdint.h>
+	- Point2 and Point3
 
 	UI
-		- current coordinates display
-		- script mode (display current last and next lines)
+
+	- current coordinates display
+	- script mode (display current last and next lines)
 
 	CONTROL
-		- programmable table run out compensator
-		- jog mode
-		- origin offset as global variable
-		- repeat command
-		- multi-line skip
-		- probing sequence / scripts
-		- programmable ramp rate
 
-	CAM
-		- improved multi-axis feed rate estimate
-		- auto feed, plunge, and inc calculator
-		  - predefined materials (load like tools)
-		  - define number of fluids in tool file
-		  - compute from feature dimensions and chip load
-		- engrave
-		- zone
-		 X optimal direction square pocket
-		
-	RELIABILITY
-		- tool cutting length check
-		- dynamic clearance height or automatic check
-		- script check
+	- bulk compile actions into linked list
+	- ramping based on inertia
+	- jog mode
+	- repeat command
+	- probing sequence / scripts
+	- programmable ramp rate
+	X programmable table run out compensator
+	X multi-line skip
+	
+	CAM	
 
+	- engrave
+	- auto feed, plunge, and inc calculator
+	  - predefined materials (load like tools)
+	  - define number of fluids in tool file
+	  - compute from feature dimensions and chip load
+	- tool cutting length check
+	- dynamic clearance height or automatic check
+	X subroutine layers profile
+	X drill pecking
+	X improved multi-axis feed rate estimate
+	X optimal direction square pocket
+	
 	SCRIPTING
-		- include / subroutine functionality for scripting
-		- scripting variables
-		- multi-line comment
-		X allow for extra white space
 
-HARDWARE FEATURES
+	- script check
+  	- print error string for invalid scripting command
+	- multi-line comment
+	X basic add/sub expressions
+        X scripting variables
+	X allow for extra white space
 
+HARDWARE
+
+- Reinforced z-stage mounting to frame
+- Redesigned z-stage motor mounting (wider translation and clamp)
+- plexiglass chip shield (on hinges)
 - new x axis motor coupler
 - end stops / probing
 - vacuum / fan
 - light
-- RTC / PWM for improved timing
-- dynamic spindle speed
-- tool change (reverse spindle?)
 X new spindle and z-stage
+X spindle interface plate
+
+ELECTRONICS
+
+- Probe input
+- RTC for improved timing
+- Spindle load power check (for stuck spindle)
+- Motor load power check (for stuck motor)
+- Controllable spindle speed
+- Controllable spindle on / off

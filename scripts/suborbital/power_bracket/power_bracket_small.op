@@ -1,0 +1,41 @@
+set unittype mm;
+clear_vars;
+
+goto nan nan 5.0;
+goto 0.0 0.0 nan;
+toolchange tools/FLATMILLS/3MMX12MM_2F_FLATMILL.tool;
+set plungerate 1;
+set stepdown 0.075;
+set stepover 50;
+hold;
+
+# HOLES;
+set feedrate 50;
+set P0 0.00 0.00 0.00;
+circular_pocket 7.25 10.25 2.25;
+
+set feedrate 25;
+set P0 -25.00 -29.00 0.00;
+circular_pocket 0.00 2.4892 2.25;
+
+set P0 25.00 -29.00 0.00;
+circular_pocket 0.00 2.4892 2.25;
+
+# PROFILE;
+set P0 0.00 0.00 0.00;
+set feedrate 50;
+profile scripts/suborbital/power_bracket/small_outline.prof 3.00 2.25;
+
+# BEND LINES;
+goto -20.00 -21.50 nan;
+goto nan nan 0.00;
+goto nan nan -0.05 1;
+delta 5 0 0 25;
+delta 0 0 5;
+goto 20.00 -21.50 nan;
+goto nan nan 0.00;
+goto nan nan -0.05 1;
+delta -5 0 0 25;
+delta 0 0 5;
+
+goto 0 0 5;

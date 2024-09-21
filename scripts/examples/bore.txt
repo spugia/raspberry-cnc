@@ -8,8 +8,5 @@ set stepover 75;
 
 # Boring;
 hold;
-spindle on;
 
 bore 0 0 0 6 3;
-
-spindle off;

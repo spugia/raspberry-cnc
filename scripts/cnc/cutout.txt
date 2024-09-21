@@ -1,0 +1,19 @@
+set unittype mm;
+
+# TOOL CHANGE - ZERO TO TOP FACE;
+goto 0 0 5;
+toolchange /home/pi/raspberry-cnc/tools/FLATMILLS/10MMX30MM_4F_FLATMILL.tool;
+set plungerate 1;
+set stepover 70;
+
+# Facing;
+hold;
+set feedrate 150;
+set stepdown 0.15;
+square_pocket 0.00 0.00 0.00 110.00 70.00 3.70;
+
+# Cutout;
+hold;
+set feedrate 150;
+set stepdown 0.20;
+cutout -0.25 -49.00 -29.00 49.00 29.00 0 0 0 0 12.00;

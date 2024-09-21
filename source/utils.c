@@ -12,6 +12,22 @@ bool lfeq(double f1, double f2) {
   return fabs(f1 - f2) < TOLF;
 }
 
+char * cstr(char * src) {
+
+  int L = strlen(src);
+  
+  char * cpy = malloc(sizeof(char) * L + 1);
+
+  for (int c = 0 ; c < L ; c++) {
+
+    cpy[c] = src[c];
+  }
+
+  cpy[L] = '\0';
+
+  return cpy;
+}
+
 bool seq(char * str1, char * str2) {
   
   if (str1 == NULL || str2 == NULL) { return false; }

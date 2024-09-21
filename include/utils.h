@@ -6,6 +6,7 @@
 // FUNCTIONS
 
 bool    lfeq(double, double);
+char *   ceq(char *);
 bool     seq(char *, char *);
 double  sign(double);
 double atan3(double, double);

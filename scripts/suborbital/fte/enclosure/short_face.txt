@@ -1,0 +1,29 @@
+set unittype mm;
+
+# X TRAVEL - 208 mm;
+# Y TRAVEL - 183 mm;
+# Y ORIGIN - 148.94196 mm;
+
+# TOOL CHANGE;
+goto 0 0 5;
+toolchange tools/FLATMILLS/2MMX8MM_2F_FLATMILL.tool;
+set plungerate 1;
+set stepdown 0.5;
+set stepover 75;
+
+# REFERENCE HOLES;
+drill 0.00 0.00 0.00 1.00;
+
+# SCREW HOLES;
+set feedrate 25;
+circular_pocket -21.250 37.825 0.00 0.00 2.25 1.00;
+circular_pocket  21.250 37.825 0.00 0.00 2.25 1.00;
+
+# PLUMBING FEEDTHROUGH;
+set feedrate 50;
+# circular_pocket -18.449 25.6725 0.00 0.00 6.25 1.00;
+
+# CUTOUT;
+set feedrate 50;
+hold;
+groove 0.00 0.00 0.00 -38.75 -40.79375 -38.75 42.79375 38.75 42.79375 38.75 -40.79375 1.00;

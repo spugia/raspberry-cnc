@@ -1,0 +1,33 @@
+set unittype mm;
+
+goto 0 0 5;
+
+# Left hole;
+goto -21.25 0 5;
+goto -21.25 0  0  150;
+goto -21.25 0 -5  5;
+goto -21.25 0  0;
+goto -21.25 0 -5;
+goto -21.25 0 -10 5;
+goto -21.25 0  0;
+goto -21.25 0 -10;
+goto -21.25 0 -15 5;
+goto -21.25 0  0;
+goto -21.25 0 -15;
+goto -21.25 0 -20 5;
+goto -21.25 0  5;
+
+# Right hole;
+goto 21.25 0 5;
+goto 21.25 0  0  150;
+goto 21.25 0 -5  5;
+goto 21.25 0  0;
+goto 21.25 0 -5;
+goto 21.25 0 -10 5;
+goto 21.25 0  0;
+goto 21.25 0 -10;
+goto 21.25 0 -15 5;
+goto 21.25 0  0;
+goto 21.25 0 -15;
+goto 21.25 0 -20 5;
+goto 21.25 0  5;

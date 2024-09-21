@@ -1,94 +1,18 @@
 #include "../include/cam.h"
 
-Action ** face(double Fxy, double Fz, double b, double X0, double Y0, double Z0, double Lx, double Ly, double dr, double h, double dz, int * A) {
+Action ** square_pocket(CNC * cnc, double Lx, double Ly, double h, int * A) {
+
+  double X0 = cnc -> X0;
+  double Y0 = cnc -> Y0;
+  double Z0 = cnc -> Z0;
+
+  double b  = cnc -> tool.Dc;
   
-  double xmin = X0 - Lx / 2 + b / 2;
-  double xmax = X0 + Lx / 2 - b / 2;
-  double ymin = Y0 - Ly / 2 + b / 2;
-  double ymax = Y0 + Ly / 2 - b / 2;
+  double Fxy = cnc -> mat.Fxy;
+  double Fz  = cnc -> mat.Fz;
+  double dr  = cnc -> mat.dr;
+  double dz  = cnc -> mat.dz;
   
-  *A = 3;
-  Action ** s = malloc(sizeof(Action *) * (*A));
-  
-  //.. go to start position
-  s[0] = create_linear(NAN, NAN, Z_OFF, NAN);
-  s[1] = create_linear(xmin, ymin, NAN, NAN);
-  s[2] = create_linear(NAN, NAN, Z0, NAN);
-  
-  //.. cut pocket
-  bool min;
-  bool xstp;
-  
-  double x;
-  double y;
-  double z = Z0 - dz;
-
-  if (z < Z0 - h) { z = Z0 - h; }
-
-  if (Lx > Ly) { xstp = true;  }
-  else         { xstp = false; }
-  
-  while (z >= Z0 - h) {
-
-    s = (Action **) realloc(s, sizeof(Action *) * (*A + 2));
-    
-    s[(*A)++] = create_linear(xmin, ymin, NAN, NAN);
-    s[(*A)++] = create_linear(NAN, NAN, z, Fz);
-
-    min = true;
-    
-    if (xstp) {
-	
-      y = ymin;
-    
-      while (y <= ymax) {
-
-	s = (Action **) realloc(s, sizeof(Action *) * (*A + 2));
-      
-	if (!(min = !min)) { x = xmax; }
-	else               { x = xmin; }
-
-	s[(*A)++] = create_linear(x, NAN, NAN, Fxy);
-	s[(*A)++] = create_linear(NAN, y, NAN, Fxy);
-      
-	if (!lfeq(y, ymax) && (y + dr * b) > ymax) { y = ymax;    }
-	else                                       { y += dr * b; }
-      }
-
-    } else {
-
-      x = xmin;
-
-      while (x <= xmax) {
-
-	s = (Action **) realloc(s, sizeof(Action *) * (*A + 2));
-
-	if (!(min = !min)) { y = ymax; }
-	else               { y = ymin; }
-
-	s[(*A)++] = create_linear(NAN, y, NAN, Fxy);
-	s[(*A)++] = create_linear(x, NAN, NAN, Fxy);
-
-	if (!lfeq(x, xmax) && (x + dr * b) > xmax) { x = xmax;    }
-	else                                       { x += dr * b; }
-      }
-    }
-    
-    if (!lfeq(z, -h + Z0) && (z - dz) < (-h + Z0)) { z = -h + Z0; }
-    else                                           { z -= dz;     }
-  }
-
-  //.. return to safe point
-  s = (Action **) realloc(s, sizeof(Action *) * (*A + 2));
-
-  s[(*A)++] = create_linear(NAN, NAN, Z_OFF, NAN);
-  s[(*A)++] = create_linear(X0, Y0, NAN, NAN);
-  
-  return s;
-}
-
-Action ** square_pocket(double Fxy, double Fz, double b, double X0, double Y0, double Z0, double Lx, double Ly, double dr, double h, double dz, int * A) {
-
   double xmin = X0 - Lx / 2 + b / 2;
   double xmax = X0 + Lx / 2 - b / 2;
   double ymin = Y0 - Ly / 2 + b / 2;
@@ -98,9 +22,9 @@ Action ** square_pocket(double Fxy, double Fz, double b, double X0, double Y0, d
   Action ** s = malloc(sizeof(Action *) * (*A));
 
   //.. go to start position
-  s[0] = create_linear(NAN, NAN, Z0, NAN);
+  s[0] = create_linear(NAN, NAN, Z_OFF, NAN);
   s[1] = create_linear(xmin, ymin, NAN, NAN);
-  s[2] = create_linear(NAN, NAN, Z0, NAN);
+  s[2] = create_linear(NAN, NAN, cnc -> Z0, NAN);
   
   //.. cut pocket
   bool min;
@@ -130,38 +54,38 @@ Action ** square_pocket(double Fxy, double Fz, double b, double X0, double Y0, d
 
     if (xstp) {
 
-      y = ymin;
+      y = ymin + b / 2;
 
-      while (y <= ymax) {
+      while (y <= ymax - b / 2) {
 
 	s = (Action **) realloc(s, sizeof(Action *) * (*A + 2));
 
-	if (!(min = !min)) { x = xmax; }
-	else               { x = xmin; }
+	if (!(min = !min)) { x = xmax - b / 2; }
+	else               { x = xmin + b / 2; }
 
 	s[(*A)++] = create_linear(NAN, y, NAN, Fxy);
 	s[(*A)++] = create_linear(x, NAN, NAN, Fxy);
       
-	if (!lfeq(y, ymax) && (y + dr * b) > ymax) { y = ymax;    }
-	else                                       { y += dr * b; }
+	if (!lfeq(y, ymax - b / 2) && (y + dr * b) > ymax - b / 2) { y = ymax - b / 2; }
+	else                                                       { y += dr * b;      }
       }
       
     } else {
       
-      x = xmin;
+      x = xmin + b / 2;
 
-      while (x <= xmax) {
+      while (x <= xmax - b / 2) {
 
 	s = (Action **) realloc(s, sizeof(Action *) * (*A + 2));
       
-	if (!(min = !min)) { y = ymax; }
-	else               { y = ymin; }
+	if (!(min = !min)) { y = ymax - b / 2; }
+	else               { y = ymin + b / 2; }
 
 	s[(*A)++] = create_linear(x, NAN, NAN, Fxy);
 	s[(*A)++] = create_linear(NAN, y, NAN, Fxy);
       
-	if (!lfeq(x, xmax) && (x + dr * b) > xmax) { x = xmax;    }
-	else                                       { x += dr * b; }
+	if (!lfeq(x, xmax - b / 2) && (x + dr * b) > xmax - b / 2) { x = xmax - b / 2; }
+	else                                                       { x += dr * b;      }
       }
     }
     
@@ -178,8 +102,19 @@ Action ** square_pocket(double Fxy, double Fz, double b, double X0, double Y0, d
   return s;
 }
 
-Action ** nested_square_pocket(double Fxy, double Fz, double b, double X0, double Y0, double Z0, double Lxi, double Lyi, double Lxo, double Lyo, double dr, double h, double dz, int * A) {
+Action ** nested_square_pocket(CNC * cnc, double Lxi, double Lyi, double Lxo, double Lyo, double h, int * A) {
 
+  double X0 = cnc -> X0;
+  double Y0 = cnc -> Y0;
+  double Z0 = cnc -> Z0;
+
+  double b  = cnc -> tool.Dc;
+  
+  double Fxy = cnc -> mat.Fxy;
+  double Fz  = cnc -> mat.Fz;
+  double dr  = cnc -> mat.dr;
+  double dz  = cnc -> mat.dz;
+  
   double xi = Lxi / 2 + b / 2;
   double yi = Lyi / 2 + b / 2;
   double xo = Lxo / 2 - b / 2;
@@ -245,8 +180,111 @@ Action ** nested_square_pocket(double Fxy, double Fz, double b, double X0, doubl
   return s;
 }
 
-Action ** circular_pocket(double Fxy, double Fz, double b, double X0, double Y0, double Z0, double Ri, double Ro, double dr, double h, double dz, int * A) {
+Action ** drill(CNC * cnc, double h, int * A) {
 
+  double X0 = cnc -> X0;
+  double Y0 = cnc -> Y0;
+  double Z0 = cnc -> Z0;
+
+  double b  = cnc -> tool.Dc;
+  
+  double Fz = cnc -> mat.Fz;
+  double dz = cnc -> mat.dr * b;
+  
+  *A = 4 + 3 * (ceil(h / dz) + 1);
+  Action ** s = malloc(sizeof(Action *) * (*A));
+
+  (*A) = 0;
+  
+  //.. go to start position
+  s[(*A)++] = create_linear(NAN, NAN, Z_OFF, FZ_max());
+  s[(*A)++] = create_linear(X0, Y0, NAN, NAN);
+  s[(*A)++] = create_linear(NAN, NAN, Z0, FZ_max());
+
+  //.. peck drilling
+  double z = Z0;
+  
+  while (z >= Z0 - h) {
+
+    s[(*A)++] = create_linear(NAN, NAN, z, Fz);
+    
+    if (!lfeq(z, -h + Z0) && (z - dz) < (-h + Z0)) { z = -h + Z0; }
+    else {
+
+      s[(*A)++] = create_linear(NAN, NAN, Z0, FZ_max());
+      s[(*A)++] = create_linear(NAN, NAN, z,  FZ_max());
+
+      z -= dz;
+    }    
+  }
+  
+  //.. return to safe
+  s[(*A)++] = create_linear(NAN, NAN, Z_OFF, FZ_max());
+
+  //.. realloc
+  s = (Action **) realloc(s, sizeof(Action *) * (*A));
+  
+  return s;
+}
+
+Action ** bore(CNC * cnc, double R, double h, int * A) {
+
+  double X0 = cnc -> X0;
+  double Y0 = cnc -> Y0;
+  double Z0 = cnc -> Z0;
+
+  double b  = cnc -> tool.Dc;
+  
+  double Fxy = cnc -> mat.Fxy;
+  double Fz  = cnc -> mat.Fz;
+  
+  *A = 3;
+  Action ** s = malloc(sizeof(Action *) * (*A));
+
+  double r = R - b / 2;
+  
+  //.. go to start position
+  s[0] = create_linear(NAN, NAN, Z_OFF, NAN);
+  s[1] = create_linear(X0, Y0 + r, NAN, NAN);
+  s[2] = create_linear(NAN, NAN, Z0, NAN);
+
+  //.. bore
+  double dz = 2 * M_PI * fabs(r) / Fxy * Fz;
+  double z  = Z0 - dz;
+
+  while (z >= Z0 - h) {
+
+    s = (Action **) realloc(s, sizeof(Action *) * (*A + 1));
+  
+    s[(*A)++] = create_curve(X0, Y0 + r, z, X0, Y0, DIR_CW, Fxy);
+      
+    //.. set new height
+    if (!lfeq(z, -h + Z0) && (z - dz) < (-h + Z0)) { z = -h + Z0; }
+    else                                           { z -= dz;     }
+  }
+  
+  //.. finish and return to safe point
+  s = (Action **) realloc(s, sizeof(Action *) * (*A + 2));
+  
+  s[(*A)++] = create_curve(X0, Y0 + r, Z0 - h, X0, Y0, DIR_CW, Fxy);
+  s[(*A)++] = create_linear(NAN, NAN, Z_OFF, NAN);
+  
+  return s;
+}
+
+Action ** circular_pocket(CNC * cnc, double Ri, double Ro, double h, int * A) {
+
+  double X0 = cnc -> X0;
+  double Y0 = cnc -> Y0;
+  double Z0 = cnc -> Z0;
+
+  double b  = cnc -> tool.Dc;
+  
+  double Fxy = cnc -> mat.Fxy;
+  double Fz  = cnc -> mat.Fz;
+  double dr  = cnc -> mat.dr;
+  double dz  = cnc -> mat.dz;
+  
   *A = 3;
   Action ** s = malloc(sizeof(Action *) * (*A));
 
@@ -297,230 +335,164 @@ Action ** circular_pocket(double Fxy, double Fz, double b, double X0, double Y0,
   return s;
 }
 
-Action ** cutout(double Fxy, double Fz, double b, double Z0, double xmin, double ymin, double xmax, double ymax, double rtl, double rtr, double rbr, double rbl, double h, double dz, int * A) {
+Action ** radial_contour(CNC * cnc, double * xs, double * ys, double * x0s, double * y0s, enum DirType * ds, double offset, double h, int P, int * A) {
 
-  int a = (rtl > 0) + (rtr > 0) + (rbr > 0) + (rbl > 0);
+  double X0 = cnc -> X0;
+  double Y0 = cnc -> Y0;
+  double Z0 = cnc -> Z0;
+
+  double b = cnc -> tool.Dc;
+  
+  double Fxy = cnc -> mat.Fxy;
+  double Fz  = cnc -> mat.Fz;
+  double dz  = cnc -> mat.dz;
+  double dr  = cnc -> mat.dr;
+
+  double xstr, ystr;
+
+  double * xo = malloc(sizeof(double) * P);
+  double * yo = malloc(sizeof(double) * P);
+  
+  //.. go to zero position
+  offset_profile(xs, ys, xo, yo, P, offset);
+
+  xstr = xo[0] + X0;
+  ystr = yo[0] + Y0;
   
   *A = 3;
   Action ** s = malloc(sizeof(Action *) * (*A));
+  s[0] = create_linear(NAN,   NAN, Z_OFF, NAN);
+  s[1] = create_linear(xstr, ystr,   NAN, NAN);
+  s[2] = create_linear(NAN,   NAN,    Z0, NAN);
+  
+  //.. cutting layers
+  double z    = Z0 - dz;
+  double doff = b * dr;
+  double off;
 
-  //.. go to start position
-  s[0] = create_linear(NAN, NAN, Z_OFF, NAN);
-  s[1] = create_linear(xmin, ymin + rbl, NAN, NAN);
-  s[2] = create_linear(NAN, NAN, Z0, NAN);
-
-  //.. cut pocket
-  double z = Z0 - dz;
-
-  if (z < Z0 - h) { z = Z0 - h; }
+  if (lfeq(doff, 0)) { doff = dr; }
+  if (z < Z0 - h)    { z = Z0 - h; }
   
   while (z >= Z0 - h) {
 
-    s = (Action **) realloc(s, sizeof(Action *) * (*A + 5 + a));
-    
-    //.. go to new height
-    s[(*A)++] = create_linear(NAN, NAN, z, Fz);
+    off = offset;
 
-    //.. cutting groove
-    s[(*A)++] = create_linear(NAN, ymax - rtl, NAN, Fxy);
-    if (rtl > 0) { s[(*A)++] = create_curve(xmin + rtl, ymax, NAN, xmin + rtl, ymax - rtl, DIR_CW, Fxy); }
-
-    s[(*A)++] = create_linear(xmax - rtr, NAN, NAN, Fxy);
-    if (rtr > 0) { s[(*A)++] = create_curve(xmax, ymax - rtr, NAN, xmax - rtr, ymax - rtr, DIR_CW, Fxy); }
-    
-    s[(*A)++] = create_linear(NAN, ymin + rbr, NAN, Fxy);
-    if (rbr > 0) { s[(*A)++] = create_curve(xmax - rbr, ymin, NAN, xmax - rbr, ymin + rbr, DIR_CW, Fxy); }
-    
-    s[(*A)++] = create_linear(xmin + rbl, NAN, NAN, Fxy);
-    if (rbl > 0) { s[(*A)++] = create_curve(xmin, ymin + rbl, NAN, xmin + rbl, ymin + rbl, DIR_CW, Fxy); }
-    
-    //.. set new height
-    if (!lfeq(z, -h + Z0) && (z - dz) < (-h + Z0)) { z = -h + Z0; }
-    else                                           { z -= dz;     }
-  }
-
-  //.. return to safe point
-  s = (Action **) realloc(s, sizeof(Action *) * (*A + 1));
-  
-  s[(*A)++] = create_linear(NAN, NAN, Z_OFF, NAN);
-  
-  return s;  
-}
-
-Action ** bore(double Fxy, double Fz, double b, double X0, double Y0, double Z0, double R, double h, int * A) {
-
-  *A = 3;
-  Action ** s = malloc(sizeof(Action *) * (*A));
-
-  double r = R - b;
-  
-  //.. go to start position
-  s[0] = create_linear(NAN, NAN, Z_OFF, NAN);
-  s[1] = create_linear(X0, Y0 + r, NAN, NAN);
-  s[2] = create_linear(NAN, NAN, Z0, NAN);
-
-  //.. bore
-  double dz = 2 * M_PI * r / Fxy * Fz;
-  double z = Z0 - dz;
-  
-  while (z >= Z0 - h) {
-
-    s = (Action **) realloc(s, sizeof(Action *) * (*A + 1));
-  
-    s[(*A)++] = create_curve(X0, Y0 + r, z, X0, Y0, DIR_CW, Fxy);
-      
-    //.. set new height
-    if (!lfeq(z, -h + Z0) && (z - dz) < (-h + Z0)) { z = -h + Z0; }
-    else                                           { z -= dz;     }
-  }
-  
-  //.. finish and return to safe point
-  s = (Action **) realloc(s, sizeof(Action *) * (*A + 2));
-  
-  s[(*A)++] = create_curve(X0, Y0 + r, Z0 - h, X0, Y0, DIR_CW, Fxy);
-  s[(*A)++] = create_linear(NAN, NAN, Z_OFF, NAN);
-  
-  return s;
-}
-
-Action ** drill(double Fz, double X0, double Y0, double Z0, double h, int * A) {
-
-  *A = 5;
-  Action ** s = malloc(sizeof(Action *) * (*A));
-
-  //.. go to start position
-  s[0] = create_linear(NAN, NAN, Z_OFF, NAN);
-  s[1] = create_linear(X0, Y0, NAN, NAN);
-  s[2] = create_linear(NAN, NAN, Z0, NAN);
-
-  //.. drill
-  s[3] = create_linear(NAN, NAN, Z0 - h, Fz);
-  
-  //.. return to safe
-  s[4] = create_linear(NAN, NAN, Z_OFF, NAN);
-
-  return s;
-}
-
-Action ** fillet(double Fxy, double Fz, double b, double X0, double Y0, double Z0, double R, double a, double h, double dz, int * A) {
-  
-  *A = 3;
-  Action ** s = malloc(sizeof(Action *) * (*A));
-
-  //.. start and end points
-  double r  = R + b / 2;
-  double x1 = r * cos(a) + X0;
-  double y1 = r * sin(a) + Y0;
-  double x2 = r * cos(a + M_PI / 2) + X0;
-  double y2 = r * sin(a + M_PI / 2) + Y0;
-
-  //.. go to start position
-  s[0] = create_linear(NAN, NAN, Z_OFF, NAN);
-  s[1] = create_linear(x1, y1, NAN, NAN);
-  s[2] = create_linear(NAN, NAN, Z0, NAN);
-
-  //.. cut pocket
-  bool dir = true;
-  
-  double x, y;
-  double z = Z0 - dz;
-
-  if (z < Z0 - h) { z = Z0 - h; }
-  
-  while (z >= Z0 - h) {
-
+    //.. go to start
     s = (Action **) realloc(s, sizeof(Action *) * (*A + 2));
-    
-    //.. go to new height
+    s[(*A)++] = create_linear(xstr, ystr, NAN, NAN);
     s[(*A)++] = create_linear(NAN, NAN, z, Fz);
 
-    //.. cutting groove
-    x = x1;
-    y = y1;
-    
-    if (dir) {
-      x = x2;
-      y = y2;
+    //.. radial increments
+    while (off >= 0) {
+
+      //.. calculate new profile
+      offset_profile(xs, ys, xo, yo, P, off);
+      
+      s = (Action **) realloc(s, sizeof(Action *) * (*A + P));
+      
+      for (int p = 0 ; p < P ; p++) {
+	
+	if (ds[p] == DIR_None) { s[(*A)++] = create_linear(xo[p] + X0, yo[p] + Y0, NAN,                                  Fxy); }
+	else                   { s[(*A)++] =  create_curve(xo[p] + X0, yo[p] + Y0, NAN, x0s[p] + X0, y0s[p] + Y0, ds[p], Fxy); }
+      }
+      
+      if (!lfeq(off, 0) && (off - doff) < 0) { off  = 0;    }
+      else                                   { off -= doff; }
     }
 
-    dir = !dir;
-
-    s[(*A)++] = create_curve(x, y, NAN, X0, Y0, DIR_CW, Fxy);
-    
     //.. set new height
     if (!lfeq(z, -h + Z0) && (z - dz) < (-h + Z0)) { z = -h + Z0; }
     else                                           { z -= dz;     }
   }
 
   //.. return to safe point
-  s = (Action **) realloc(s, sizeof(Action *) * (*A + 1));
+  s = (Action **) realloc(s, sizeof(Action *) * (*A + 2));
+  s[(*A)++] = create_linear(xstr, ystr,   NAN, NAN);
+  s[(*A)++] = create_linear(NAN,   NAN, Z_OFF, NAN);
   
-  s[(*A)++] = create_linear(NAN, NAN, Z_OFF, NAN);
+  free(xo);
+  free(yo);
   
-  return s;  
+  return s;
 }
 
-Action ** groove(double Fxy, double Fz, double X0, double Y0, double Z0, double * Xs, double * Ys, int P, double h, double dz, int * A) {
+void offset_profile(double * x, double * y, double * X, double * Y, int P, double offset) {
 
-  //.. offset positions
+  //.. zero offset case
+  if (lfeq(offset, 0)) {
+
+    for (int p = 0 ; p < P ; p++) {
+
+      X[p] = x[p];
+      Y[p] = y[p];
+    }
+
+    return;
+  }
+  
+  //.. calculating scale factor
+  double xcm, ycm;
+  profile_cm(x, y, P, &xcm, &ycm);
+
+  double x1 = x[0] - xcm;
+  double y1 = y[0] - ycm;
+  double x2 = x[1] - xcm;
+  double y2 = y[1] - ycm;
+
+  double S = 1 + offset * sqrt(pow(y2 - y1, 2) + pow(x2 - x1, 2)) / (x2 * y1 - x1 * y2);
+  
+  //.. apply offset
   for (int p = 0 ; p < P ; p++) {
 
-    Xs[p] += X0;
-    Ys[p] += Y0;
-  }
-  
-  //.. go to start position
-  *A = 3;
-  Action ** s = malloc(sizeof(Action *) * (*A));
-
-  s[0] = create_linear(NAN, NAN, Z_OFF, NAN);
-  s[1] = create_linear(Xs[0], Ys[0], NAN, NAN);
-  s[2] = create_linear(NAN, NAN, Z0, NAN);
-
-  //.. cut groove
-  bool forward = true;
-  
-  double z = Z0 - dz;
-
-  if (z < Z0 - h) { z = Z0 - h; }
-  
-  while (z >= Z0 - h) {
-
-    s = (Action **) realloc(s, sizeof(Action *) * (*A + P));
-    
-    //.. go to new height
-    s[(*A)++] = create_linear(NAN, NAN, z, Fz);
-
-    //.. cutting groove
-    if (forward) {
-
-      for (int p = 1 ; p < P ; p++) { s[(*A)++] = create_linear(Xs[p], Ys[p], NAN, Fxy); }
-      
-    } else {
-
-      for (int p = P - 2 ; p >= 0 ; p--) { s[(*A)++] = create_linear(Xs[p], Ys[p], NAN, Fxy); }
-    }
-
-    forward = !forward;
-    
-    //.. set new height
-    if (!lfeq(z, -h + Z0) && (z - dz) < (-h + Z0)) { z = -h + Z0; }
-    else                                           { z -= dz;     }
+    X[p] = x[p] * S;
+    Y[p] = y[p] * S;
   }
 
-  //.. return to safe point
-  s = (Action **) realloc(s, sizeof(Action *) * (*A + 1));
-  
-  s[(*A)++] = create_linear(NAN, NAN, Z_OFF, NAN);
+  //.. adjusting center
+  double xcm2, ycm2;
+  profile_cm(X, Y, P, &xcm2, &ycm2);
 
-  free(Xs);
-  free(Ys);
-  
-  return s;   
+  for (int p = 0 ; p < P ; p++) {
+
+    X[p] += -xcm2 + xcm;
+    Y[p] += -ycm2 + ycm;
+  }
 }
 
-Action ** engrave_text(double Fxy, double Fz, char * text, double X0, double Y0, double Z0, double h, double dz, double a, int * A) {
+void profile_cm(double * xs, double * ys, int P, double * xcm, double * ycm) {
 
+  *xcm = 0;
+  *ycm = 0;
+  
+  for (int p = 1 ; p < P ; p++) {
+
+    *xcm += xs[p];
+    *ycm += ys[p];
+  }
+
+  *xcm /= (double) P;
+  *ycm /= (double) P;
+}
+
+Action ** side_contour(CNC * cnc, double * xs, double * ys, double * x0s, double * y0s, enum DirType * ds, double ox, double oy, double h, int P, int * A) {
+
+  
+  
+  return NULL;
+}
+
+Action ** engrave_text(CNC * cnc, char * text, double h, double a, int * A) {
+
+  double X0 = cnc -> X0;
+  double Y0 = cnc -> Y0;
+  double Z0 = cnc -> Z0;
+
+  double b  = cnc -> tool.Dc;
+  
+  double Fxy = cnc -> mat.Fxy;
+  double Fz  = cnc -> mat.Fz;
+  double dz  = cnc -> mat.dz;
+  
   *A = 2;
   Action ** s = malloc(sizeof(Action *) * (*A));
 
@@ -543,29 +515,6 @@ Action ** engrave_text(double Fxy, double Fz, char * text, double X0, double Y0,
     case 'A': engrave_A(x, Y0, Z0, w, h, dz, Fxy, Fz, &s, A); break;
     case 'B': engrave_B(x, Y0, Z0, w, h, dz, Fxy, Fz, &s, A); break;
     case 'C': engrave_C(x, Y0, Z0, w, h, dz, Fxy, Fz, &s, A); break;
-    case 'D': break;
-    case 'E': break;
-    case 'F': break;
-    case 'G': break;
-    case 'H': break;
-    case 'I': break;
-    case 'J': break;
-    case 'K': break;
-    case 'L': break;
-    case 'M': break;
-    case 'N': break;
-    case 'O': break;
-    case 'P': break;
-    case 'Q': break;
-    case 'R': break;
-    case 'S': break;
-    case 'T': break;
-    case 'U': break;
-    case 'V': break;
-    case 'W': break;
-    case 'X': break;
-    case 'Y': break;
-    case 'Z': break;
     default: break;
     }
   }

@@ -1,0 +1,113 @@
+set unittype mm;
+
+# ------------ VARIABLES ------------;
+
+var stock_x       46.60;
+var stock_y       51.12;
+var stock_z       60.57;
+
+var part_x        20.00;
+var part_y        32.00;
+var part_z        30.00;
+var bore_radius   5.75;
+var bore_chamfer  6.75 -2.50;
+
+var face_depth    0.50;
+var chamfer_depth 3.00;
+
+var b_off         7.00;
+var depth_off     1.00;
+
+# ------------- TOOL CHANGE -------------;
+
+goto nan nan 5.0;
+goto 0.0 0.0 nan;
+toolchange tools/FLATMILLS/14INX1_18IN_4F_FLATMILL.tool;
+hold;
+
+set P0 0.00 5.75 0.00;
+
+# ---------------- FACING ----------------;
+
+var face_lx stock_x +b_off +b_off;
+var face_ly stock_y +b_off +b_off;
+
+set plungerate 250;
+set feedrate   100;
+set stepover   25;
+set stepdown   0.50;
+
+hold;
+face face_lx face_ly face_depth;
+
+set Z0 -face_depth;
+
+# --------------- PROFILE ---------------;
+
+# -------------- rough cut --------------;
+
+var profile_depth +part_z +depth_off;
+var offset_r stock_x -part_x;
+div offset_r 2;
+
+set plungerate 250;
+set feedrate   100;
+set stepover   25;
+set stepdown   0.50;
+
+hold;
+profile scripts/C365/top_4mm_off.prof offset_r profile_depth;
+
+# ------------- finish pass -------------;
+
+var offset_f +4.00 -3.125;
+var step_down_f profile_depth;
+div step_down_f 3;
+
+set plungerate 250;
+set feedrate   25;
+set stepover   1;
+set stepdown   step_down_f;
+
+hold;
+profile scripts/C365/top_18in_off.prof offset_f profile_depth;
+
+# ----------------- BORE -----------------;
+
+set plungerate 1;
+set feedrate   50;
+
+hold;
+bore bore_radius profile_depth_r;
+
+# ------------- TOOL CHANGE -------------;
+
+goto nan nan 5.0;
+goto 0.0 0.0 nan;
+toolchange tools/CHAMFERS/6MM_90DEG_3F_CHAMFER.tool;
+hold;
+
+set Z0 0;
+
+# --------------- CHAMFERS ---------------;
+
+set plungerate 5;
+set feedrate   100;
+set stepdown   0.25;
+
+hold;
+bore bore_chamfer chamfer_depth;
+
+set plungerate 250;
+set feedrate   100;
+
+var chamfer_depth_r chamfer_depth -0.1;
+
+hold;
+profile scripts/C365/top_chamfer.prof 0.0 chamfer_depth_r;
+
+set stepdown chamfer_depth;
+set feedrate 25;
+
+hold;
+profile scripts/C365/top_chamfer.prof 0.0 chamfer_depth;

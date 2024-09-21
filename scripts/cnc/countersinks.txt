@@ -1,0 +1,18 @@
+set unittype mm;
+
+# TOOL CHANGE - ZERO TO TOP FACE;
+goto 0 0 5;
+toolchange /home/pi/raspberry-cnc/tools/FLATMILLS/18INX12IN_4F_FLATMILL.tool;
+set feedrate 200;
+set plungerate 5;
+set stepdown 0.15;
+set stepover 50;
+
+# Facing;
+hold;
+circular_pocket -20.00  7.50 0.00 2.50 7.00 8.50;
+circular_pocket  20.00  7.50 0.00 2.50 7.00 8.50;
+circular_pocket  20.00 -7.50 0.00 2.50 7.00 8.50;
+circular_pocket -20.00 -7.50 0.00 2.50 7.00 8.50;
+
+goto 0 0 5;

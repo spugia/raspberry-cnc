@@ -1,16 +1,16 @@
 set feedrate 7.5;
 set plungerate 1;
 
-set plungeinc 0.025;
-set transinc 0.75;
+set stepdown 0.025;
+set stepover 0.75;
 
 hold;
 
-goto 0 0 0.1;
-
-skip;
-
-goto 0 0 0;
+# Comment 1;
+delta 0 0 0.1;
+# Comment 2;
+delta 0 0 -0.1;
+# Comment 3;
 
 skip;
 skip;

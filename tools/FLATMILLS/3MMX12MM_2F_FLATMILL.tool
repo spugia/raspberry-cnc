@@ -6,4 +6,4 @@ set tooltype flatmill;
 set cuttingdiameter 3;
 set shankdiameter   3;
 set cuttinglength   12;
-set toollength       38;
+set toollength      38;

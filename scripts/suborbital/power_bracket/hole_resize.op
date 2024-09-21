@@ -1,0 +1,18 @@
+set unittype mm;
+clear_vars;
+
+goto nan nan 5.0;
+goto 0.0 0.0 nan;
+toolchange tools/FLATMILLS/38INX1IN_4F_FLATMILL.tool;
+set plungerate 1;
+set stepdown 0.05;
+set stepover 50;
+set feedrate 50;
+hold;
+
+# HOLES;
+set P0 0.00 0.00 0.00;
+bore 12.70 2.00;
+
+goto nan nan 5;
+goto 0 0 nan;

@@ -1,29 +1,90 @@
-exit
-pause - (press space during action)
-terminate - (pressure esc during action)
+MACHINE CONTROL
 
-get
-set
+  exit
+  
+  pause - (press space during action)
+  terminate - (pressure esc during action)
 
-exe
-	hold
-	continue
-	skip
-	stop
-	toolchange
+SETTINGS
 
-spindle on/off
+  get
+    X
+    Y
+    Z
+    P
+    X0
+    Y0
+    Z0
+    P0
+    Runout
+    UnitType
+    CuttingDiameter
+    ShankDiameter
+    CuttingLength
+    ToolLength
+    FeedRate
+    PlungRate
+    StepDown
+    StepOver
 
-delta X Y Z *F*
-goto X Y Z *F*
+  set
+    X
+    Y
+    Z
+    P
+    X0
+    Y0
+    Z0
+    P0
+    Runout
+    UnitType
+    CuttingDiameter
+    ShankDiameter
+    CuttingLength
+    ToolLength
+    FeedRate
+    PlungRate
+    StepDown
+    StepOver
 
-face x0 y0 z0 Lx Ly h
-square_pocket x0 y0 z0 *Lxi* *Lyi* Lxo Lyo h
-bore x0 y0 z0 r h
-circular_pocket
-drill x0 y0 z0 h
-cutout
-groove x0 y0 z0 x1 y1. . . xn yn h
+EXECUTION
 
-*fillet
-*engrave* (WIP)
+  exe
+    hold
+    continue
+    skip N
+    stop
+    toolchange
+
+SCRIPTING
+
+  # comment
+  var name var/val... var/val
+  div var var/val
+  mult var var/val
+  clear_vars
+
+LEVEL 0 CAM
+
+  delta x y z *F*
+  goto  x y z *F*
+  curve dir x y z xo yo *F*
+
+LEVEL 1 CAM
+
+  *engrave* (WIP)
+  drill           depth
+  bore            R depth
+  circular_pocket *Ri* Ro depth
+  face            Lx Ly depth
+  square_pocket   *Lxi* *Lyi* Lxo Lyo depth
+
+LEVEL 2 CAM
+
+  radial_contour profile_path lead_in depth
+                 | x y
+                 o x0 y0 x y cw/ccw
+
+  side_contour profile_path lead_in_x lead_in_y depth
+               | x y
+               o x0 y0 x y cw/ccw

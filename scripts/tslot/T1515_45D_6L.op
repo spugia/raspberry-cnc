@@ -1,0 +1,81 @@
+# T1515 45 DEGREE 6" LENGTH;
+
+set unittype in;
+
+# ------------------ STOCK PARAMETERS -------------------;
+
+var l_s 6.25;
+
+# ------------------- PART PARAMETERS -------------------;
+
+var l_x 6.0;
+var l_y 1.5;
+var l_z 1.5;
+
+var angle 45;
+
+var d_csink 0.750;
+var d_screw 0.344;
+
+# ----------------- COMPUTED PARAMETERS -----------------;
+
+# angle to radians;
+div angle 180;
+mult angle 3.14159;
+
+# sin(angle);
+var sin1 angle;
+var sin2 angle;
+mult sin2 angle;
+mult sin2 angle;
+div sin2 6;
+
+var sin +sin1 -sin2;
+
+# z axis offset;
+var z_off l_x;
+mult z_off sin;
+var z_off +z_off +0.25;
+
+# x axis offset;
+div x_off l_x 2;
+var x_off +4.7625;
+
+# end facing offset;
+var x_end l_x;
+div x_end 2;
+
+var y_end l_y;
+div y_end 2;
+
+# ---------------------- TOOL CHANGE ---------------------;
+
+toolchange tools/FLATMILLS/10MMX30MM_4F_FLATMILL.tool;
+
+set feedrate   200;
+set plungerate 200;
+set stepover   25;
+set stepdown   1;
+
+# ------------------------- SETUP ------------------------;
+
+goto nan nan z_off;
+goto -l_x2 0.0 nan;
+goto nan nan 0.0;
+
+# INSERT STOCK
+hold;
+
+goto nan nan z_off;
+
+# ---------------------- END FACING ----------------------;
+
+hold;
+
+set P0 -x_end y_end l_z;
+groove scripts/tslot/45deg_15in_left.prof l_z;
+
+set P0 x_end y_end l_z;
+groove scripts/tslot/45deg_15in_right.prof l_z;
+
+# ---------------------- END FACING ----------------------;

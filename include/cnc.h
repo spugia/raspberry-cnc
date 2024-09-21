@@ -28,17 +28,29 @@ typedef struct MAT {
 
 typedef struct CNC {
 
-  FILE * fpos;      //.. position file
-  FILE * ftool;     //.. tool file
+  FILE * fpos;        //.. position file
+  FILE * ftool;       //.. tool file
   
-  double X;         //.. spindle X position [in]
-  double Y;         //.. spindle Y position [in]
-  double Z;         //.. spindle Z position [in]
+  double X;           //.. spindle X position [in]
+  double Y;           //.. spindle Y position [in]
+  double Z;           //.. spindle Z position [in]
 
+  double X0;          //.. CAM origin X position [in]
+  double Y0;          //.. CAM origin Y position [in]
+  double Z0;          //.. CAM origin Z position [in]
+  
+  int32_t ROX;        //.. max x run-out [steps]
+  int32_t ROY;        //.. max y run-out [steps]
+  int32_t ROZ;        //.. max z run-out [steps]
+
+  int32_t rox;        //.. current x run-out position [steps]
+  int32_t roy;        //.. current y run-out position [steps]
+  int32_t roz;        //.. current z run-out position [steps]
+  
   enum UnitType unit;
   
-  struct MAT mat;   //.. material settings
-  struct TOOL tool; //.. loaded tool settings
+  struct MAT mat;     //.. material settings
+  struct TOOL tool;   //.. loaded tool settings
   
 } CNC;
 
